@@ -1,0 +1,27 @@
+hash: 771197b2e2c67aa3f9dd82a0a6bf646ba16997313aa62b6decf9995957954a25
+updated: 2017-08-23T20:04:37.4532651+09:30
+imports:
+- name: github.com/ccding/go-stun
+  version: 04a4eed61c57ecc9903f8983d1d2c17b88d2e9e1
+  subpackages:
+  - stun
+- name: github.com/pkg/errors
+  version: c605e284fe17294bda444b34710735b29d1a9d90
+- name: github.com/Sirupsen/logrus
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
+- name: github.com/streadway/amqp
+  version: 2cbfe40c9341ad63ba23e53013b3ddc7989d801c
+- name: golang.org/x/crypto
+  version: eb71ad9bd329b5ac0fd0148dd99bd62e8be8e035
+  subpackages:
+  - ssh/terminal
+- name: golang.org/x/sys
+  version: 07c182904dbd53199946ba614a412c61d3c548f5
+  subpackages:
+  - unix
+  - windows
+- name: sourcegraph.com/sqs/goreturns
+  version: d4c76c572c6d23139b51360fa2ebac04df6cea09
+  subpackages:
+  - returns
+testImports: []
