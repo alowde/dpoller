@@ -163,7 +163,7 @@ func Init(config []byte) (result chan error, hchan chan heartbeat.Beat, schan ch
 		return nil, nil, nil, errors.Wrap(err, "error while connecting listener")
 	}
 
-	result = make(chan error)
+	result = make(chan error, 10)
 	hchan = make(chan heartbeat.Beat)
 	schan = make(chan url.Status)
 

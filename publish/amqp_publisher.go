@@ -3,7 +3,6 @@ package publish
 import (
 	"encoding/json"
 	"fmt"
-	//	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/url"
 	"github.com/pkg/errors"

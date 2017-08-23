@@ -3,29 +3,31 @@ package main
 import (
 	"fmt"
 	"github.com/alowde/dpoller/config"
+	"github.com/alowde/dpoller/consensus"
+	"github.com/alowde/dpoller/coordinate"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/listen"
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/publish"
 	"github.com/alowde/dpoller/url"
 	"github.com/pkg/errors"
-	"sourcegraph.com/sqs/goreturns/returns"
 	"time"
 )
 
-var routineStatusChannels map[string]chan error
+var routineStatus map[string]chan error
 
-var HeartbeatStatus chan error
+var heartbeatRoutineStatus chan error
 
 func initialise() error {
 
-	routineStatusChannels = make(map[string]chan error)
-	routineStatusChannels["Listen"] = make(chan error)
-	routineStatusChannels["Publish"] = make(chan error)
-	routineStatusChannels["Coord"] = make(chan error)
-	routineStatusChannels["Url"] = make(chan error)
+	routineStatus = make(map[string]chan error)
+	routineStatus["Url"] = make(chan error, 10)
 
-	HeartbeatStatus = make(chan error)
+	heartbeatRoutineStatus = make(chan error)
+
+	var err error
+	var hchan chan heartbeat.Beat
+	var schan chan url.Status
 
 	if err := config.Load(); err != nil {
 		return errors.Wrap(err, "could not load config")
@@ -33,8 +35,14 @@ func initialise() error {
 	if err := node.Initialise(); err != nil {
 		return errors.Wrap(err, "could not initialise node data")
 	}
-	_, _, _, err := listen.Init(*config.Unparsed.Listen)
-	if err != nil {
+	if routineStatus["listen"], hchan, schan, err = listen.Init(*config.Unparsed.Listen); err == nil {
+		if err := coordinate.Init(hchan); err != nil {
+			return errors.Wrap(err, "could not initialise coordinator routine")
+		}
+		if err := consensus.Init(schan); err != nil {
+			return errors.Wrap(err, "could not initialise consensus monitoring routine")
+		}
+	} else {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
 	if err := url.Init(*config.Unparsed.Tests); err != nil {
@@ -52,24 +60,12 @@ func main() {
 		return
 	}
 	go urlRoutine()
-	go heartbeatRoutine(HeartbeatStatus, routineStatusChannels)
+	go heartbeatRoutine(heartbeatRoutineStatus, routineStatus)
 
 	fmt.Println(node.Self)
 	fmt.Println(heartbeat.NewBeat())
 	fmt.Println(url.Tests)
-	<-HeartbeatStatus
-
-}
-
-func consensusRoutine() {
-
-}
-
-func coordinatorRoutine() {
-
-	// collect heartbeats for x seconds
-	// evaluate our position
-	// set global/package state
+	<-heartbeatRoutineStatus
 
 }
 
@@ -81,7 +77,7 @@ func urlRoutine() {
 				// TODO: unwrap error and handle timeouts differently from other errors
 				fmt.Printf("%+v\n", err)
 			}
-			routineStatusChannels["Url"] <- heartbeat.RoutineNormal{time.Now()}
+			routineStatus["Url"] <- heartbeat.RoutineNormal{time.Now()}
 		}
 		<-minWait
 	}
