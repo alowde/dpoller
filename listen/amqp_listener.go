@@ -7,7 +7,8 @@ import (
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/url"
 	"github.com/pkg/errors"
-	samqp "github.com/streadway/amqp"
+	"github.com/streadway/amqp"
+	"time"
 )
 
 type Config struct {
@@ -35,10 +36,10 @@ func (c Config) validate() error {
 
 // broker contains all of the information required to connect to an AMQP broker
 type broker struct {
-	Config                       // broker configuration
-	connection *samqp.Connection // broker connection object
-	achannel   *samqp.Channel    // default AMQP channel
-	closed     chan *samqp.Error // connection closed flag
+	Config                      // broker configuration
+	connection *amqp.Connection // broker connection object
+	achannel   *amqp.Channel    // default AMQP channel
+	closed     chan *amqp.Error // connection closed flag
 }
 
 // connect establises connection for AMQP broker
@@ -52,12 +53,12 @@ func (b *broker) connect() error {
 		b.Host,
 		b.Port,
 	)
-	if b.connection, err = samqp.Dial(uri); err != nil {
+	if b.connection, err = amqp.Dial(uri); err != nil {
 		fmt.Printf("%#v\n", uri)
 		return errors.Wrap(err, "could not connect to AMQP broker")
 	}
 
-	b.closed = make(chan *samqp.Error)
+	b.closed = make(chan *amqp.Error)
 	b.connection.NotifyClose(b.closed)
 
 	if b.achannel, err = b.connection.Channel(); err != nil {
@@ -81,51 +82,53 @@ func (b *broker) connect() error {
 
 // listen ensures the connection is live and sets up a parsing routine
 func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan url.Status) error {
-	select {
-	case <-b.closed:
-		if err := b.connect(); err != nil {
-			return errors.Wrap(err, "could not connect before listening")
+	for {
+		select {
+		case <-b.closed:
+			if err := b.connect(); err != nil {
+				return errors.Wrap(err, "could not connect before listening")
+			}
+		default:
+			// declare a queue on the AMQP broker
+			queue, err := b.achannel.QueueDeclare(
+				"",    // Ask server to generate a name
+				false, // durable
+				true,  // delete when unused
+				false, // exclusive
+				false, // noWait
+				nil,   // arguments
+			)
+			if err != nil {
+				return errors.Wrap(err, "unable to declare an AMQP queue")
+			}
+			// bind that queue to the dpoller exchange
+			if err = b.achannel.QueueBind(
+				queue.Name, // name of the queue
+				"#",        // bindingKey
+				"dpoller",  // sourceExchange
+				false,      // noWait
+				nil,        // arguments
+			); err != nil {
+				return errors.Wrap(err, "unable to bind to AMQP queue")
+			}
+			// receive AMQP messages on a new Go channel
+			inbox, err := b.achannel.Consume(
+				queue.Name, // name
+				"",         // auto generated consumerTag,
+				false,      // no auto acknowledgements
+				true,       // exclusive
+				false,      // option not supported
+				false,      // receive deliveries immediately
+				nil,        // arguments
+			)
+			if err != nil {
+				return errors.Wrap(err, "unable to consume from AMQP queue")
+			}
+			// launch the actual parsing routine
+			go parseAmqpMessages(inbox, result, hchan, schan)
 		}
-	default:
-		// declare a queue on the AMQP broker
-		queue, err := b.achannel.QueueDeclare(
-			"",    // Ask server to generate a name
-			false, // durable
-			true,  // delete when unused
-			false, // exclusive
-			false, // noWait
-			nil,   // arguments
-		)
-		if err != nil {
-			return errors.Wrap(err, "unable to declare an AMQP queue")
-		}
-		// bind that queue to the dpoller exchange
-		if err = b.achannel.QueueBind(
-			queue.Name, // name of the queue
-			"#",        // bindingKey
-			"dpoller",  // sourceExchange
-			false,      // noWait
-			nil,        // arguments
-		); err != nil {
-			return errors.Wrap(err, "unable to bind to AMQP queue")
-		}
-		// receive AMQP messages on a new Go channel
-		inbox, err := b.achannel.Consume(
-			queue.Name, // name
-			"",         // auto generated consumerTag,
-			false,      // no auto acknowledgements
-			true,       // exclusive
-			false,      // option not supported
-			false,      // receive deliveries immediately
-			nil,        // arguments
-		)
-		if err != nil {
-			return errors.Wrap(err, "unable to consume from AMQP queue")
-		}
-		// launch the actual parsing routine
-		go parseAmqpMessages(inbox, result, hchan, schan)
+		return nil
 	}
-	return nil
 }
 
 // newBroker attempts to load and parse a given AMQP config filename and
@@ -141,7 +144,7 @@ func newBroker(config []byte) (*broker, error) {
 		return &b, errors.Wrap(err, "could not validate config")
 	}
 	b.Config = c
-	b.closed = make(chan *samqp.Error)
+	b.closed = make(chan *amqp.Error)
 	close(b.closed)
 	return &b, nil
 }
@@ -172,41 +175,48 @@ func Init(config []byte) (result chan error, hchan chan heartbeat.Beat, schan ch
 }
 
 // TODO: Implement watchdog
-func parseAmqpMessages(inbox <-chan samqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan url.Status) {
-	defer func() { close(result) }()
-	for msg := range inbox {
-		msg.Ack(true)
-		switch msg.Type {
-		case "status":
-			var s url.Status
-			if err := json.Unmarshal(msg.Body, &s); err != nil {
+func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan url.Status) {
+loop:
+	for {
+		heartbeatTimer := time.After(15 * time.Second)
+		select {
+		case <-heartbeatTimer:
+			result <- heartbeat.RoutineNormal{time.Now()}
+			break loop
+		case message := <-inbox:
+			message.Ack(true)
+			switch message.Type {
+			case "status":
+				var s url.Status
+				if err := json.Unmarshal(message.Body, &s); err != nil {
+					log.WithFields(log.Fields{
+						"error":    err,
+						"delivery": fmt.Sprintf("%#v", message),
+					}).Warn("failed to decode a Status delivery, skipping")
+					continue
+				}
 				log.WithFields(log.Fields{
-					"error":    err,
-					"delivery": fmt.Sprintf("%#v", msg),
-				}).Warn("failed to decode a Status delivery, skipping")
-				continue
-			}
-			log.WithFields(log.Fields{
-				"status": fmt.Sprintf("%#v", s),
-			}).Debug("decoded a status")
-			schan <- s
-		case "heartbeat":
-			var b heartbeat.Beat
-			if err := json.Unmarshal(msg.Body, &b); err != nil {
+					"status": fmt.Sprintf("%#v", s),
+				}).Debug("decoded a status")
+				schan <- s
+			case "heartbeat":
+				var b heartbeat.Beat
+				if err := json.Unmarshal(message.Body, &b); err != nil {
+					log.WithFields(log.Fields{
+						"error":    err,
+						"delivery": fmt.Sprintf("%#v", message),
+					}).Warn("failed to decode a Heartbeat delivery, skipping")
+					continue
+				}
 				log.WithFields(log.Fields{
-					"error":    err,
-					"delivery": fmt.Sprintf("%#v", msg),
-				}).Warn("failed to decode a Heartbeat delivery, skipping")
-				continue
+					"beat": fmt.Sprintf("%#v", b),
+				}).Debug("decoded a Heartbeat delivery")
+				hchan <- b
+			default:
+				log.WithFields(log.Fields{
+					"type": message.Type,
+				}).Warn("received unknown delivery type")
 			}
-			log.WithFields(log.Fields{
-				"beat": fmt.Sprintf("%#v", b),
-			}).Debug("decoded a Heartbeat delivery")
-			hchan <- b
-		default:
-			log.WithFields(log.Fields{
-				"type": msg.Type,
-			}).Warn("received unknown delivery type")
 		}
 	}
 }
