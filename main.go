@@ -36,7 +36,7 @@ func initialise() error {
 		return errors.Wrap(err, "could not initialise node data")
 	}
 	if routineStatus["listen"], hchan, schan, err = listen.Init(*config.Unparsed.Listen); err == nil {
-		if err := coordinate.Init(hchan); err != nil {
+		if routineStatus["coordinate"], err = coordinate.Init(hchan); err != nil {
 			return errors.Wrap(err, "could not initialise coordinator routine")
 		}
 		if err := consensus.Init(schan); err != nil {
