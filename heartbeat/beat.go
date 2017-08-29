@@ -79,6 +79,18 @@ func (beats Beats) bestFeas() (feasID int64, e error) {
 	return
 }
 
+func (beats Beats) bestActiveFeas() (feasID int64, e error) {
+	e = fmt.Errorf("No values")
+	feasID = math.MaxInt64
+	for _, b := range beats {
+		if (b.ID < feasID) && b.Feasible {
+			e = nil
+			feasID = b.ID
+		}
+	}
+	return
+}
+
 func (beats Beats) toBeatMap() (result BeatMap) {
 	var t BeatMap = make(map[int64]Beat)
 	for _, v := range beats {
@@ -93,13 +105,21 @@ func (beats Beats) toBeatMap() (result BeatMap) {
 	return t
 }
 
-// Evaluate sets various status parameters for the Node based on its neighbours
+// Evaluate assesses the set of known nodes to determine which node has/should have the Coordinator role
 func (beats Beats) Evaluate() {
 	if beats.coordCount() == 0 {
 		if Self.Coordinator { // This node is the uncontested coordinator, no further evaluation
+			Self.Feasible = false
 			return
-		} else { // No coordinators exist at all, assess feasible coordinators
-			beats.evaluateFeas()
+		} else { // No coordinators exist at all
+			if Self.Feasible { // This node is the feasible coordinator, promote
+				Self.Coordinator = true
+				Self.Feasible = false
+				return
+			} else { // This node is not the feasible coordinator, assess feasible coordinator status
+				beats.evaluateFeas()
+				return
+			}
 		}
 	} else {
 		if Self.Coordinator { // This node is a contested coordinator
@@ -107,17 +127,39 @@ func (beats Beats) Evaluate() {
 			if best > Self.ID { // This node is not the best coordinator, update Self and assess feasible coordinators
 				Self.Coordinator = false
 				beats.evaluateFeas()
-			} else {
-				return // This node is the best coordinator, cease further evaluation
+				return
+			} else { // This node is the best coordinator, cease further evaluation
+				Self.Feasible = false
+				return
 			}
-		} else { // There is a single coordinator already, move to evaluating feasible coordinators
+		} else { // There is one or more coordinators already, move to evaluating feasible coordinators
 			beats.evaluateFeas()
+			return
 		}
 	}
 }
 
+// Evaluate assesses the set of known nodes to determine which node has/should have the Feasible Coordinator role
 func (beats Beats) evaluateFeas() {
-
+	if beats.feasCount() == 0 {
+		if Self.Feasible { // This node is the uncontested feasible coordinator, no further evaluation
+			return
+		} else { // No feasible coordinators exist
+			best, _ := beats.bestFeas()
+			if best < Self.ID { // This node is the best possible feasible coordinator, set
+				Self.Feasible = true
+			}
+			return
+		}
+	} else {
+		if Self.Feasible { // This node is a contested feasible coordinator
+			best, _ := beats.bestActiveFeas()
+			if best > Self.ID { // This node is not the best feasible coordinator in contention, unset
+				// WARNING: This means incomplete/one-way message transmission may cause flapping!
+				Self.Feasible = false
+			}
+		}
+	}
 }
 
 type BeatMap map[int64]Beat
