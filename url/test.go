@@ -53,7 +53,7 @@ func Init(config []byte) error {
 }
 
 // TODO: accept a deadline here and time out if needed
-func RunTests() (s statuses) {
+func RunTests() (s Statuses) {
 	testCount := len(Tests)
 	results := make(chan Status, testCount)
 	for i, v := range Tests {

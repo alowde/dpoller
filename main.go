@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/config"
 	"github.com/alowde/dpoller/consensus"
 	"github.com/alowde/dpoller/coordinate"
@@ -39,17 +40,20 @@ func initialise() error {
 		if routineStatus["coordinate"], err = coordinate.Init(hchan); err != nil {
 			return errors.Wrap(err, "could not initialise coordinator routine")
 		}
-		if err := consensus.Init(schan); err != nil {
+		if routineStatus["consensus"], err = consensus.Init(schan); err != nil {
 			return errors.Wrap(err, "could not initialise consensus monitoring routine")
 		}
 	} else {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
 	if err := url.Init(*config.Unparsed.Tests); err != nil {
-		return errors.Wrap(err, "could not initialise test URL data")
+		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
 	if err := publish.Init(*config.Unparsed.Publish); err != nil {
 		return errors.Wrap(err, "could not initialise publish functions")
+	}
+	if err := alert.Init(*config.Unparsed.Alert, *config.Unparsed.Contacts); err != nil {
+		return errors.Wrap(err, "could not initialise alert function")
 	}
 	return nil
 }
@@ -83,6 +87,7 @@ func urlRoutine() {
 	}
 }
 
+// TODO: don't send heartbeats continuously, add a delay...
 func heartbeatRoutine(result chan error, statusChans map[string]chan error) {
 	var routineStatus map[string]error
 	for {

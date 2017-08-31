@@ -1,7 +1,5 @@
 package url
 
-//import "time"
-//import "net/http"
 import "github.com/alowde/dpoller/node"
 
 type Status struct {
@@ -14,10 +12,10 @@ type Status struct {
 }
 
 // Statuses is an array of Status
-type statuses []Status
+type Statuses []Status
 
-// dedupe returns a statuses with only the most recent node-url result tuples
-func (s statuses) dedupe() (r statuses) {
+// dedupe returns a Statuses with only the most recent node-url result tuples
+func (s Statuses) dedupe() (r Statuses) {
 	type tup struct {
 		nodeId int64
 		url    string
