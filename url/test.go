@@ -9,6 +9,7 @@ import (
 )
 
 type Test struct {
+	// TODO: add the required JSON labels
 	URL           string
 	Name          string
 	Timeout       int64
