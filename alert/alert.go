@@ -16,7 +16,11 @@ var contacts []Contact
 
 func Init(contactJson json.RawMessage, alertConfig json.RawMessage) error {
 	var err error
-	if contacts, err = parseContacts(contactJson); err != nil {
+	var Cja []json.RawMessage
+	if err := json.Unmarshal(contactJson, &Cja); err != nil {
+		return errors.Wrap(err, "could not parse contact configuration collection (is it an array?)")
+	}
+	if contacts, err = parseContacts(Cja); err != nil {
 		return errors.Wrap(err, "could not parse contact JSON")
 	}
 	// turn the alert configuration data into an array of individual alert configurations,
@@ -37,9 +41,9 @@ func Init(contactJson json.RawMessage, alertConfig json.RawMessage) error {
 }
 
 // parseContacts calls the various packages and returns the abstracted Contact interface set
-func parseContacts(message json.RawMessage) (c []Contact, e error) {
+func parseContacts(message []json.RawMessage) (c []Contact, e error) {
 	// We can't assign the returned array directly as it doesn't meet the interface requirements, but we can copy individual elements
-	s := alertSmtp.ParseContacts(json.RawMessage{})
+	s := alertSmtp.ParseContacts(message)
 	for _, v := range s {
 		c = append(c, v)
 	}
