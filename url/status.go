@@ -1,6 +1,8 @@
 package url
 
-import "github.com/alowde/dpoller/node"
+import (
+	"github.com/alowde/dpoller/node"
+)
 
 type Status struct {
 	Node       node.Node
@@ -14,8 +16,8 @@ type Status struct {
 // Statuses is an array of Status
 type Statuses []Status
 
-// dedupe returns a Statuses with only the most recent node-url result tuples
-func (s Statuses) dedupe() (r Statuses) {
+// Dedupe returns a Statuses containing only the most recent node-url result tuples
+func (s Statuses) Dedupe() (r Statuses) {
 	type tup struct {
 		nodeId int64
 		url    string
@@ -37,4 +39,18 @@ func (s Statuses) dedupe() (r Statuses) {
 		r = append(r, v)
 	}
 	return r
+}
+
+// GetFailed returns a Statuses containing only test statuses that didn't receive an Ok response
+func (s Statuses) GetFailed() (r Statuses) {
+out:
+	for _, v := range s {
+		for _, u := range v.Url.OkStatus {
+			if v.StatusCode == u {
+				break out
+			}
+		}
+		r = append(r, v)
+	}
+	return
 }

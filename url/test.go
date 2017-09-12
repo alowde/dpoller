@@ -4,23 +4,33 @@ import (
 	"encoding/json"
 	"github.com/alowde/dpoller/node"
 	"github.com/pkg/errors"
+	"net"
 	"net/http"
 	"time"
 )
 
+var transport = &http.Transport{
+	Dial: (&net.Dialer{
+		Timeout: 20 * time.Second,
+	}).Dial,
+	TLSHandshakeTimeout: 10 * time.Second,
+}
+var client = &http.Client{
+	Timeout:   time.Second * 60,
+	Transport: transport,
+}
+
 type Test struct {
-	// TODO: add the required JSON labels
-	URL           string
-	Name          string
-	Timeout       int64
-	OkStatus      []int
-	AlertInterval int
-	Contacts      []string
+	URL           string   `json:"url"`
+	Name          string   `json:"name"`
+	OkStatus      []int    `json:"ok-statuses"`
+	AlertInterval int      `json:"alert-interval"`
+	Contacts      []string `json:"contacts"`
 }
 
 func (t Test) run() (s Status) {
 	time_start := time.Now()
-	resp, err := http.Get(t.URL) // TODO: use a custom dialler with timeout, etc defined
+	resp, err := client.Get(t.URL)
 	if err == nil {
 		defer resp.Body.Close()
 		s = Status{
@@ -53,7 +63,6 @@ func Init(config []byte) error {
 	return nil
 }
 
-// TODO: accept a deadline here and time out if needed
 func RunTests() (s Statuses) {
 	testCount := len(Tests)
 	results := make(chan Status, testCount)

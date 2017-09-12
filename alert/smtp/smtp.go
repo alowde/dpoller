@@ -25,7 +25,7 @@ func (c smtpContact) SendAlert() error {
 	to := []string{c.email}
 	msg := []byte(smsg)
 	auth := smtp.PlainAuth("", Config.Username, Config.Password, Config.Server)
-	err := smtp.SendMail(Config.Server, auth, "dpoller@catapult-elearning.com", to, msg)
+	err := smtp.SendMail(Config.Server, auth, "dpoller@example.com", to, msg)
 	return err
 }
 

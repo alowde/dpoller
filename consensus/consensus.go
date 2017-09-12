@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/url"
 	"time"
@@ -23,7 +22,8 @@ func checkConsensus(in chan url.Status, statusReport chan error) {
 			select {
 			case <-interval:
 				if heartbeat.Self.Coordinator { // Only the coordinator checks URL statuses
-					alert.EvaluateUrlStatuses(urlStatuses)
+					deduped := urlStatuses.Dedupe()
+					_ = deduped.GetFailed() // TODO: call alert on any contacts with a name that matches failed URL tests
 				}
 				break timer
 			case s := <-in:

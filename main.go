@@ -87,10 +87,11 @@ func urlRoutine() {
 	}
 }
 
-// TODO: don't send heartbeats continuously, add a delay...
 func heartbeatRoutine(result chan error, statusChans map[string]chan error) {
 	var routineStatus map[string]error
 	for {
+		wait := time.After(60 * time.Second)
+		<-wait
 		// check each routine's status, getting only the most recent status for each
 		for k, c := range statusChans {
 			for i := 0; i < len(c); i++ {
