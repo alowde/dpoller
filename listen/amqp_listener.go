@@ -105,7 +105,7 @@ func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan
 			if err = b.achannel.QueueBind(
 				queue.Name, // name of the queue
 				"#",        // bindingKey
-				"dpoller",  // sourceExchange
+				b.Exchange, // sourceExchange
 				false,      // noWait
 				nil,        // arguments
 			); err != nil {

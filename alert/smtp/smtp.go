@@ -30,7 +30,7 @@ func (c smtpContact) SendAlert() error {
 }
 
 func (c smtpContact) GetName() string {
-	return ""
+	return c.name
 }
 
 // Initialise sets configuration for the package associated with this contact

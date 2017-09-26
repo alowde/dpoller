@@ -46,11 +46,11 @@ func initialise() error {
 	} else {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
-	if err := url.Init(*config.Unparsed.Tests); err != nil {
-		return errors.Wrap(err, "could not initialise URL testing functions")
-	}
 	if err := publish.Init(*config.Unparsed.Publish); err != nil {
 		return errors.Wrap(err, "could not initialise publish functions")
+	}
+	if err := url.Init(*config.Unparsed.Tests); err != nil {
+		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
 	if err := alert.Init(*config.Unparsed.Alert, *config.Unparsed.Contacts); err != nil {
 		return errors.Wrap(err, "could not initialise alert function")
@@ -79,7 +79,8 @@ func urlRoutine() {
 		for _, v := range url.RunTests() {
 			if err := publish.Publish(v, time.After(10*time.Second)); err != nil {
 				// TODO: unwrap error and handle timeouts differently from other errors
-				fmt.Printf("%+v\n", err)
+				fmt.Printf("%v\n", err)
+				return
 			}
 			routineStatus["Url"] <- heartbeat.RoutineNormal{time.Now()}
 		}

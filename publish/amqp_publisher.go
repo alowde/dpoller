@@ -73,6 +73,9 @@ func (b *broker) connect() error {
 	); err != nil {
 		return errors.Wrap(err, "could not declare AMQP exchange")
 	}
+	b.closed = make(chan *amqp.Error)
+	b.achannel.NotifyClose(b.closed)
+
 	return nil
 }
 
@@ -142,15 +145,15 @@ func Publish(i interface{}, deadline <-chan time.Time) error {
 			return errors.New("deadline expired while publishing to amqp")
 		case <-brokerInstance.closed:
 			if err := brokerInstance.connect(); err != nil {
-				return errors.Wrap(err, "could not connect before publishing")
+				return errors.Wrap(err, "could not connect before publishing to amqp")
 			}
 		default:
-			if err := brokerInstance.achannel.Publish("dpoller", msgtype, false, false, msg); err != nil {
-				continue
-			} else {
+			if err := brokerInstance.achannel.Publish(brokerInstance.Config.Exchange, msgtype, false, false, msg); err == nil {
 				return nil
-
+			} else {
+				return errors.Wrap(err, "failed to publish to amqp")
 			}
 		}
 	}
+	return nil
 }

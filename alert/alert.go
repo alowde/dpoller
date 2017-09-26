@@ -3,6 +3,7 @@ package alert
 import (
 	"encoding/json"
 	alertSmtp "github.com/alowde/dpoller/alert/smtp"
+	"github.com/alowde/dpoller/url"
 	"github.com/pkg/errors"
 )
 
@@ -34,6 +35,19 @@ func Init(contactJson json.RawMessage, alertConfig json.RawMessage) error {
 		for _, c := range contacts {
 			if err := c.Initialise(v); err == nil {
 				break // a contact handled the configuration, no need to try more
+			}
+		}
+	}
+	return nil
+}
+
+func ProcessAlerts(urls url.Statuses) error {
+	for _, u := range urls {
+		for _, uc := range u.Url.Contacts {
+			for _, c := range contacts {
+				if uc == c.GetName() {
+					c.SendAlert()
+				}
 			}
 		}
 	}
