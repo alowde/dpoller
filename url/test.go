@@ -2,6 +2,8 @@ package url
 
 import (
 	"encoding/json"
+	//	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/node"
 	"github.com/pkg/errors"
 	"net"
@@ -60,6 +62,10 @@ func Init(config []byte) error {
 	if err := json.Unmarshal(config, &Tests); err != nil {
 		return errors.Wrap(err, "unable to parse URL config")
 	}
+	for _, v := range Tests {
+		log.WithField("routine", "test").Info(v)
+	}
+
 	return nil
 }
 
@@ -70,6 +76,7 @@ func RunTests() (s Statuses) {
 		if i == testCount {
 			break // Don't run more tests that we prepared for
 		}
+		log.Infof("Running test: %v", v)
 		go func() { results <- v.run() }() // run tests concurrently
 	}
 	for i := 0; i < testCount; i++ {

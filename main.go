@@ -69,7 +69,7 @@ func main() {
 	fmt.Println(node.Self)
 	fmt.Println(heartbeat.NewBeat())
 	fmt.Println(url.Tests)
-	<-heartbeatRoutineStatus
+	fmt.Printf("End %+v", <-heartbeatRoutineStatus)
 
 }
 
@@ -89,7 +89,7 @@ func urlRoutine() {
 }
 
 func heartbeatRoutine(result chan error, statusChans map[string]chan error) {
-	var routineStatus map[string]error
+	var routineStatus = make(map[string]error)
 	for {
 		wait := time.After(60 * time.Second)
 		<-wait
@@ -102,16 +102,19 @@ func heartbeatRoutine(result chan error, statusChans map[string]chan error) {
 			case heartbeat.RoutineNormal:
 				//check if the last normal status is too long ago
 				if time.Since(v.Timestamp).Seconds() > 60 {
-					result <- errors.New("Routine timed out")
+					fmt.Println("died due to routine timed out")
+					result <- errors.Wrapf(v, "Routine %v timed out", k)
 				}
 			default:
 				// some kind of error
-				result <- v
-				close(result)
+				fmt.Printf("died due to unknown error %v from %v\n", v, k)
+				result <- errors.Wrapf(v, " From routine: %v", k)
+				//close(result)
 				return
 			}
 		}
 		if err := publish.Publish(heartbeat.NewBeat(), time.After(10*time.Second)); err != nil {
+			fmt.Println("died due to can't publish")
 			result <- err
 			close(result)
 			return

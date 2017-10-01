@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-func Init(in chan url.Status) (statusReport chan error, err error) {
-	statusReport = make(chan error, 10)
-	go checkConsensus(in, statusReport)
+func Init(in chan url.Status) (routineStatus chan error, err error) {
+	routineStatus = make(chan error, 10)
+	go checkConsensus(in, routineStatus)
 
-	return statusReport, nil
+	return routineStatus, nil
 }
 
-func checkConsensus(in chan url.Status, statusReport chan error) {
+func checkConsensus(in chan url.Status, routineStatus chan error) {
 	for {
 		var urlStatuses url.Statuses
 		interval := time.After(60 * time.Second)
@@ -26,6 +26,7 @@ func checkConsensus(in chan url.Status, statusReport chan error) {
 					deduped := urlStatuses.Dedupe()
 					alert.ProcessAlerts(deduped.GetFailed())
 				}
+				routineStatus <- heartbeat.RoutineNormal{time.Now()}
 				break timer
 			case s := <-in:
 				urlStatuses = append(urlStatuses, s)

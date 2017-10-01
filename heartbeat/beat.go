@@ -11,7 +11,7 @@ type RoutineNormal struct {
 }
 
 func (n RoutineNormal) Error() string {
-	return ""
+	return "Routine Normal"
 }
 
 type Beat struct {
@@ -163,6 +163,10 @@ func (beats Beats) evaluateFeas() {
 }
 
 type BeatMap map[int64]Beat
+
+func NewBeatMap() BeatMap {
+	return make(map[int64]Beat)
+}
 
 func (bm BeatMap) AgeOut() {
 	for k, v := range bm {

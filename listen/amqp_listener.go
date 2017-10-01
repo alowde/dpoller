@@ -182,7 +182,7 @@ loop:
 		select {
 		case <-heartbeatTimer:
 			result <- heartbeat.RoutineNormal{time.Now()}
-			break loop
+			continue loop
 		case message := <-inbox:
 			message.Ack(true)
 			switch message.Type {
@@ -217,6 +217,7 @@ loop:
 					"type": message.Type,
 				}).Warn("received unknown delivery type")
 			}
+
 		}
 	}
 }
