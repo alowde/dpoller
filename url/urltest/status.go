@@ -1,4 +1,4 @@
-package url
+package urltest
 
 import (
 	"github.com/alowde/dpoller/node"

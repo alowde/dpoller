@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/config"
 	"github.com/alowde/dpoller/consensus"
@@ -11,24 +12,29 @@ import (
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/publish"
 	"github.com/alowde/dpoller/url"
+	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 	"time"
 )
 
 var routineStatus map[string]chan error
+var heartbeatResult chan error
 
-var heartbeatRoutineStatus chan error
+var schan chan urltest.Status // schan passes individual status messages from listeners and test to consensus evaluation
+var hchan chan heartbeat.Beat // hchan passes heartbeats from listeners and heartbeat to coordinator
+
+var logger = log.WithField("routine", "main")
 
 func initialise() error {
 
-	routineStatus = make(map[string]chan error)
-	routineStatus["Url"] = make(chan error, 10)
+	// TODO: allow log level change
+	logger.Level = log.DebugLevel
 
-	heartbeatRoutineStatus = make(chan error)
+	routineStatus = make(map[string]chan error)
+
+	heartbeatResult = make(chan error)
 
 	var err error
-	var hchan chan heartbeat.Beat
-	var schan chan url.Status
 
 	if err := config.Load(); err != nil {
 		return errors.Wrap(err, "could not load config")
@@ -46,10 +52,10 @@ func initialise() error {
 	} else {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
-	if err := publish.Init(*config.Unparsed.Publish); err != nil {
+	if err := publish.Init(*config.Unparsed.Publish, hchan, schan); err != nil {
 		return errors.Wrap(err, "could not initialise publish functions")
 	}
-	if err := url.Init(*config.Unparsed.Tests); err != nil {
+	if routineStatus["Url"], err = url.Init(*config.Unparsed.Tests, schan); err != nil {
 		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
 	if err := alert.Init(*config.Unparsed.Alert, *config.Unparsed.Contacts); err != nil {
@@ -63,32 +69,19 @@ func main() {
 		fmt.Printf("%+v\n", err)
 		return
 	}
-	go urlRoutine()
-	go heartbeatRoutine(heartbeatRoutineStatus, routineStatus)
+	go checkHeartbeats(heartbeatResult, routineStatus)
 
+	/* rubbish to be logged better
 	fmt.Println(node.Self)
 	fmt.Println(heartbeat.NewBeat())
 	fmt.Println(url.Tests)
-	fmt.Printf("End %+v", <-heartbeatRoutineStatus)
+	*/
+	fmt.Printf("End %+v", <-heartbeatResult)
 
 }
 
-func urlRoutine() {
-	for {
-		minWait := time.After(60 * time.Second) // TODO: allow individual URLS to specify an interval
-		for _, v := range url.RunTests() {
-			if err := publish.Publish(v, time.After(10*time.Second)); err != nil {
-				// TODO: unwrap error and handle timeouts differently from other errors
-				fmt.Printf("%v\n", err)
-				return
-			}
-			routineStatus["Url"] <- heartbeat.RoutineNormal{time.Now()}
-		}
-		<-minWait
-	}
-}
-
-func heartbeatRoutine(result chan error, statusChans map[string]chan error) {
+// checkHeartbeats
+func checkHeartbeats(result chan error, statusChans map[string]chan error) {
 	var routineStatus = make(map[string]error)
 	for {
 		wait := time.After(60 * time.Second)
@@ -102,7 +95,6 @@ func heartbeatRoutine(result chan error, statusChans map[string]chan error) {
 			case heartbeat.RoutineNormal:
 				//check if the last normal status is too long ago
 				if time.Since(v.Timestamp).Seconds() > 60 {
-					fmt.Println("died due to routine timed out")
 					result <- errors.Wrapf(v, "Routine %v timed out", k)
 				}
 			default:

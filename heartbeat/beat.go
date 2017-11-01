@@ -7,11 +7,16 @@ import "time"
 
 // RoutineNormal is used by routines to indicate normal healthy status
 type RoutineNormal struct {
+	origin    string
 	Timestamp time.Time
 }
 
 func (n RoutineNormal) Error() string {
-	return "Routine Normal"
+	return fmt.Sprintf("Routine Normal (%v)", n.origin)
+}
+
+func (n *RoutineNormal) SetOrigin(o string) {
+	n.origin = o
 }
 
 type Beat struct {

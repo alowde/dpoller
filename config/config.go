@@ -1,8 +1,6 @@
 package config
 
 import "github.com/pkg/errors"
-
-//import "github.com/alowde/dpoller/url"
 import "encoding/json"
 import "io/ioutil"
 import "net/http"

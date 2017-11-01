@@ -1,11 +1,8 @@
-package url
+package urltest
 
 import (
-	"encoding/json"
-	//	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/node"
-	"github.com/pkg/errors"
 	"net"
 	"net/http"
 	"time"
@@ -30,6 +27,7 @@ type Test struct {
 	Contacts      []string `json:"contacts"`
 }
 
+// run runs a single URL test
 func (t Test) run() (s Status) {
 	time_start := time.Now()
 	resp, err := client.Get(t.URL)
@@ -56,23 +54,14 @@ func (t Test) run() (s Status) {
 	return s
 }
 
-var Tests []Test
+type Tests []Test
 
-func Init(config []byte) error {
-	if err := json.Unmarshal(config, &Tests); err != nil {
-		return errors.Wrap(err, "unable to parse URL config")
-	}
-	for _, v := range Tests {
-		log.WithField("routine", "test").Info(v)
-	}
-
-	return nil
-}
-
-func RunTests() (s Statuses) {
-	testCount := len(Tests)
+// Run exposes the testing functionality for an array of URL tests, allowing
+// them to be conducted simultaneously
+func (t Tests) Run() (s Statuses) {
+	testCount := len(t)
 	results := make(chan Status, testCount)
-	for i, v := range Tests {
+	for i, v := range t {
 		if i == testCount {
 			break // Don't run more tests that we prepared for
 		}

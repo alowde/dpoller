@@ -5,7 +5,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
-	"github.com/alowde/dpoller/url"
+	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"time"
@@ -81,7 +81,7 @@ func (b *broker) connect() error {
 }
 
 // listen ensures the connection is live and sets up a parsing routine
-func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan url.Status) error {
+func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status) error {
 	for {
 		select {
 		case <-b.closed:
@@ -153,7 +153,7 @@ var brokerInstance *broker
 
 // Init turns the provided config []byte into a validated amqpBroker, generates the listen
 // channels and calls listen to spawn a parser for the incoming messages.
-func Init(config []byte) (result chan error, hchan chan heartbeat.Beat, schan chan url.Status, err error) {
+func Init(config []byte) (result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status, err error) {
 	brokerInstance, err = newBroker(config)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "could not initialise listener")
@@ -165,7 +165,7 @@ func Init(config []byte) (result chan error, hchan chan heartbeat.Beat, schan ch
 
 	result = make(chan error, 10)
 	hchan = make(chan heartbeat.Beat)
-	schan = make(chan url.Status)
+	schan = make(chan urltest.Status)
 
 	if err := brokerInstance.listen(result, hchan, schan); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error while calling listen function")
@@ -175,19 +175,19 @@ func Init(config []byte) (result chan error, hchan chan heartbeat.Beat, schan ch
 }
 
 // TODO: Implement watchdog
-func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan url.Status) {
+func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status) {
 loop:
 	for {
 		heartbeatTimer := time.After(15 * time.Second)
 		select {
 		case <-heartbeatTimer:
-			result <- heartbeat.RoutineNormal{time.Now()}
+			result <- heartbeat.RoutineNormal{Timestamp: time.Now()}
 			continue loop
 		case message := <-inbox:
 			message.Ack(true)
 			switch message.Type {
 			case "status":
-				var s url.Status
+				var s urltest.Status
 				if err := json.Unmarshal(message.Body, &s); err != nil {
 					log.WithFields(log.Fields{
 						"error":    err,

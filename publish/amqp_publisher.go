@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/alowde/dpoller/heartbeat"
-	"github.com/alowde/dpoller/url"
+	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"time"
 )
+
+var schan chan urltest.Status // channel for internally publishing url statuses
+var hchan chan heartbeat.Beat // channel for internally publishing heartbeats
 
 type Config struct {
 	Host     string `json:"host"`
@@ -100,7 +103,9 @@ func newBroker(config []byte) (*broker, error) {
 var brokerInstance *broker
 
 // Init turns the provided config []byte into a validated amqpBroker and connects
-func Init(config []byte) (err error) {
+func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status) (err error) {
+	schan = s
+	hchan = h
 	brokerInstance, err = newBroker(config)
 	if err != nil {
 		return errors.Wrap(err, "could not initialise publisher")
@@ -117,11 +122,13 @@ func Init(config []byte) (err error) {
 func Publish(i interface{}, deadline <-chan time.Time) error {
 	var msgtype string
 
-	switch i.(type) {
+	switch v := i.(type) {
 	case heartbeat.Beat:
 		msgtype = "heartbeat"
-	case url.Status:
+		hchan <- v
+	case urltest.Status:
 		msgtype = "status"
+		schan <- v
 	default:
 		return errors.New("unknown type of message")
 	}
