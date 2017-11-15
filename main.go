@@ -55,7 +55,7 @@ func initialise() error {
 	if err := publish.Init(*config.Unparsed.Publish, hchan, schan); err != nil {
 		return errors.Wrap(err, "could not initialise publish functions")
 	}
-	if routineStatus["Url"], err = url.Init(*config.Unparsed.Tests, schan); err != nil {
+	if routineStatus["url"], err = url.Init(*config.Unparsed.Tests); err != nil {
 		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
 	if err := alert.Init(*config.Unparsed.Alert, *config.Unparsed.Contacts); err != nil {
@@ -71,39 +71,46 @@ func main() {
 	}
 	go checkHeartbeats(heartbeatResult, routineStatus)
 
-	/* rubbish to be logged better
-	fmt.Println(node.Self)
-	fmt.Println(heartbeat.NewBeat())
-	fmt.Println(url.Tests)
-	*/
-	fmt.Printf("End %+v", <-heartbeatResult)
+	fmt.Printf("End! got result %+v", <-heartbeatResult)
 
 }
 
 // checkHeartbeats
 func checkHeartbeats(result chan error, statusChans map[string]chan error) {
-	var routineStatus = make(map[string]error)
 	for {
+		var routineStatus = make(map[string]error)
 		wait := time.After(60 * time.Second)
 		<-wait
-		// check each routine's status, getting only the most recent status for each
 		for k, c := range statusChans {
-			for i := 0; i < len(c); i++ {
-				routineStatus[k] = <-c
+		out:
+			// dequeue all statuses, keeping the first non-normal one or the
+			// most recent normal one if all normal
+			for {
+				select {
+				case status := <-c:
+					routineStatus[k] = status
+					if _, ok := status.(heartbeat.RoutineNormal); !ok {
+						break out
+					}
+				default:
+					break out
+				}
 			}
 			switch v := routineStatus[k].(type) {
 			case heartbeat.RoutineNormal:
 				//check if the last normal status is too long ago
 				if time.Since(v.Timestamp).Seconds() > 60 {
+					log.Infof("Current time %v, timestamp %v", time.Now(), v.Timestamp)
 					result <- errors.Wrapf(v, "Routine %v timed out", k)
+					return
 				}
 			default:
 				// some kind of error
-				fmt.Printf("died due to unknown error %v from %v\n", v, k)
 				result <- errors.Wrapf(v, " From routine: %v", k)
 				//close(result)
 				return
 			}
+			fmt.Printf("finished evaluating routine %v\n", k)
 		}
 		if err := publish.Publish(heartbeat.NewBeat(), time.After(10*time.Second)); err != nil {
 			fmt.Println("died due to can't publish")

@@ -15,8 +15,13 @@ func (n RoutineNormal) Error() string {
 	return fmt.Sprintf("Routine Normal (%v)", n.origin)
 }
 
-func (n *RoutineNormal) SetOrigin(o string) {
+func (n *RoutineNormal) SetOrigin(o string) RoutineNormal {
 	n.origin = o
+	return *n
+}
+
+func NewRoutineNormal() RoutineNormal {
+	return RoutineNormal{Timestamp: time.Now()}
 }
 
 type Beat struct {

@@ -1,7 +1,8 @@
 package urltest
 
 import (
-	log "github.com/Sirupsen/logrus"
+	"fmt"
+	//log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/node"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ type Test struct {
 	Name          string   `json:"name"`
 	OkStatus      []int    `json:"ok-statuses"`
 	AlertInterval int      `json:"alert-interval"`
+	TestInterval  int      `json:"test-interval"`
 	Contacts      []string `json:"contacts"`
 }
 
@@ -31,27 +33,46 @@ type Test struct {
 func (t Test) run() (s Status) {
 	time_start := time.Now()
 	resp, err := client.Get(t.URL)
-	if err == nil {
-		defer resp.Body.Close()
-		s = Status{
-			Node:       node.Self,
-			Url:        t,
-			Rtime:      int(time.Since(time_start) / 1000000),
-			StatusCode: resp.StatusCode,
-			StatusTxt:  resp.Status,
-			Timestamp:  int(time.Now().Unix()),
-		}
-	} else {
-		s = Status{
-			Node:       node.Self,
-			Url:        t,
-			Rtime:      int(time.Since(time_start) / 1000000),
-			StatusCode: 0,
-			StatusTxt:  err.Error(),
-			Timestamp:  int(time.Now().Unix()),
-		}
+	s = Status{
+		Node:      node.Self,
+		Url:       t,
+		Rtime:     int(time.Since(time_start) / 1000000),
+		Timestamp: int(time.Now().Unix()),
 	}
-	return s
+	if err != nil {
+		s.StatusCode = 0
+		s.StatusTxt = err.Error()
+	} else {
+		defer resp.Body.Close()
+		s.StatusCode = resp.StatusCode
+		s.StatusTxt = resp.Status
+	}
+	return
+}
+
+// RunAsync runs a single URL test asynchronously and returns a result on the
+// provided channel
+func (t Test) RunAsync(c chan Status) {
+	go func(chan Status) {
+		defer close(c)
+		timeStart := time.Now()
+		resp, err := client.Get(t.URL)
+		s := Status{
+			Node:      node.Self,
+			Url:       t,
+			Rtime:     int(time.Since(timeStart) / 1000000),
+			Timestamp: int(time.Now().Unix()),
+		}
+		if err != nil {
+			s.StatusCode = 0
+			s.StatusTxt = err.Error()
+		} else {
+			defer resp.Body.Close()
+			s.StatusCode = resp.StatusCode
+			s.StatusTxt = resp.Status
+		}
+		c <- s
+	}(c)
 }
 
 type Tests []Test
@@ -65,11 +86,11 @@ func (t Tests) Run() (s Statuses) {
 		if i == testCount {
 			break // Don't run more tests that we prepared for
 		}
-		log.Infof("Running test: %v", v)
 		go func() { results <- v.run() }() // run tests concurrently
 	}
 	for i := 0; i < testCount; i++ {
 		s = append(s, <-results)
 	}
+	fmt.Println("returning results")
 	return s
 }
