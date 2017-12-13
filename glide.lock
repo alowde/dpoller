@@ -1,10 +1,14 @@
-hash: 771197b2e2c67aa3f9dd82a0a6bf646ba16997313aa62b6decf9995957954a25
-updated: 2017-08-23T20:04:37.4532651+09:30
+hash: 30d2409dbea257571d0eca026de50e3661e676c3b134869576e0c1f79e409fbb
+updated: 2017-11-05T20:28:06.6476943+10:30
 imports:
 - name: github.com/ccding/go-stun
   version: 04a4eed61c57ecc9903f8983d1d2c17b88d2e9e1
   subpackages:
   - stun
+- name: github.com/mattn/go-colorable
+  version: 167de6bfdfba052fa6b2d3664c8f5272e23c9072
+- name: github.com/mattn/go-isatty
+  version: a5cdd64afdee435007ee3e9f6ed4684af949d568
 - name: github.com/pkg/errors
   version: c605e284fe17294bda444b34710735b29d1a9d90
 - name: github.com/Sirupsen/logrus
@@ -20,8 +24,4 @@ imports:
   subpackages:
   - unix
   - windows
-- name: sourcegraph.com/sqs/goreturns
-  version: d4c76c572c6d23139b51360fa2ebac04df6cea09
-  subpackages:
-  - returns
 testImports: []

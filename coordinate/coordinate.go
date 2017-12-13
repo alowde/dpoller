@@ -23,13 +23,13 @@ func updateKnownBeats(in chan heartbeat.Beat, statusReport chan error) {
 	log.SetOutput(colorable.NewColorableStdout())
 timer:
 	for {
-		interval := time.After(10 * time.Second)
+		interval := time.After(30 * time.Second)
 		select {
 		case <-interval:
 			// when interval expires, delete beats of nodes that haven't been seen for 120 seconds and evaluate
-			log.Infoln("Aging out nodes")
+			log.WithField("nodes", knownBeats.GetNodes()).Info("Aging out nodes")
 			knownBeats.AgeOut()
-			log.Infoln("Evaluating nodes")
+			log.WithField("nodes", knownBeats.GetNodes()).Info("Evaluating nodes")
 			knownBeats.Evaluate() // because this is a blocking call we don't need to lock the map
 			log.Infoln("Reporting status")
 			statusReport <- heartbeat.RoutineNormal{Timestamp: time.Now()}

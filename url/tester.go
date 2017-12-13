@@ -2,7 +2,6 @@ package url
 
 import (
 	"encoding/json"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/publish"
@@ -18,8 +17,6 @@ type testRun struct {
 }
 
 func (tr *testRun) run() {
-	log.Infoln("Run called!")
-	//fmt.Println("Run called")
 	tr.lastRan = time.Now()
 	tr.result = make(chan urltest.Status)
 	tr.Test.RunAsync(tr.result)
@@ -64,8 +61,6 @@ func runTests(routineStatus chan error) {
 		<-minWait
 	}
 
-	fmt.Printf("\n\n---\n\n")
-
 	for {
 		minWait := time.After(15 * time.Second)
 		// For each test publish any returned results and re-launch the test if required
@@ -80,7 +75,6 @@ func runTests(routineStatus chan error) {
 				}
 				log.WithField("url", tr.URL).Debug("Published a result")
 				if time.Now().Sub(tr.lastRan) > (60 * time.Second) {
-					fmt.Printf("%v\n", tr.lastRan)
 					runList[k].run()
 				}
 			default:
@@ -92,7 +86,6 @@ func runTests(routineStatus chan error) {
 		}
 		s := heartbeat.NewRoutineNormal()
 		routineStatus <- s.SetOrigin("main routine")
-		fmt.Println("sent routine with timestamp %v", s.Timestamp)
 		<-minWait
 	}
 }

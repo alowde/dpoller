@@ -1,14 +1,21 @@
 package heartbeat
 
-import "fmt"
-import "math"
-import "github.com/alowde/dpoller/node"
-import "time"
+import (
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/alowde/dpoller/node"
+	"math"
+	"time"
+)
 
 // RoutineNormal is used by routines to indicate normal healthy status
 type RoutineNormal struct {
 	origin    string
 	Timestamp time.Time
+}
+
+func NewRoutineNormal() RoutineNormal {
+	return RoutineNormal{Timestamp: time.Now()}
 }
 
 func (n RoutineNormal) Error() string {
@@ -20,15 +27,20 @@ func (n *RoutineNormal) SetOrigin(o string) RoutineNormal {
 	return *n
 }
 
-func NewRoutineNormal() RoutineNormal {
-	return RoutineNormal{Timestamp: time.Now()}
-}
-
 type Beat struct {
 	node.Node
 	Coordinator bool
 	Feasible    bool
 	Timestamp   time.Time
+}
+
+func NewBeat() Beat {
+	return Beat{
+		node.Self,
+		Self.Coordinator,
+		Self.Feasible,
+		time.Now(),
+	}
 }
 
 var Self Beat
@@ -54,7 +66,7 @@ func (beats Beats) feasCount() (count int) {
 }
 
 func (beats Beats) bestCoord() (coordID int64, e error) {
-	e = fmt.Errorf("No values")
+	e = fmt.Errorf("no values")
 	coordID = math.MaxInt64
 	for _, b := range beats {
 		e = nil
@@ -66,7 +78,7 @@ func (beats Beats) bestCoord() (coordID int64, e error) {
 }
 
 func (beats Beats) bestActiveCoord() (coordID int64, e error) {
-	e = fmt.Errorf("No values")
+	e = fmt.Errorf("no values")
 	coordID = math.MaxInt64
 	for _, b := range beats {
 		e = nil
@@ -78,11 +90,12 @@ func (beats Beats) bestActiveCoord() (coordID int64, e error) {
 }
 
 func (beats Beats) bestFeas() (feasID int64, e error) {
-	e = fmt.Errorf("No values")
+	e = fmt.Errorf("no values")
 	feasID = math.MaxInt64
 	for _, b := range beats {
 		e = nil
-		if b.ID < feasID {
+		if b.ID < feasID && !b.Coordinator {
+			fmt.Printf("found lower beat ID %v\n", b.ID)
 			feasID = b.ID
 		}
 	}
@@ -90,7 +103,7 @@ func (beats Beats) bestFeas() (feasID int64, e error) {
 }
 
 func (beats Beats) bestActiveFeas() (feasID int64, e error) {
-	e = fmt.Errorf("No values")
+	e = fmt.Errorf("no values")
 	feasID = math.MaxInt64
 	for _, b := range beats {
 		if (b.ID < feasID) && b.Feasible {
@@ -118,31 +131,38 @@ func (beats Beats) toBeatMap() (result BeatMap) {
 // Evaluate assesses the set of known nodes to determine which node has/should have the Coordinator role
 func (beats Beats) Evaluate() {
 	if beats.coordCount() == 0 {
-		if Self.Coordinator { // This node is the uncontested coordinator, no further evaluation
+		if Self.Coordinator {
+			log.Infoln("This node is the uncontested coordinator, no further evaluation")
 			Self.Feasible = false
 			return
-		} else { // No coordinators exist at all
-			if Self.Feasible { // This node is the feasible coordinator, promote
+		} else {
+			log.Infoln("No coordinators exist at all")
+			if Self.Feasible {
+				log.Infoln("This node is the feasible coordinator, promote")
 				Self.Coordinator = true
 				Self.Feasible = false
 				return
-			} else { // This node is not the feasible coordinator, assess feasible coordinator status
+			} else {
+				log.Infoln("This node is not the feasible coordinator, assess feasible coordinator status")
 				beats.evaluateFeas()
 				return
 			}
 		}
 	} else {
-		if Self.Coordinator { // This node is a contested coordinator
+		if Self.Coordinator {
 			best, _ := beats.bestActiveCoord()
-			if best > Self.ID { // This node is not the best coordinator, update Self and assess feasible coordinators
+			if best < node.Self.ID {
+				log.Infoln("This node is not the best coordinator, update Self and assess feasible coordinators")
 				Self.Coordinator = false
 				beats.evaluateFeas()
 				return
-			} else { // This node is the best coordinator, cease further evaluation
+			} else {
+				log.Infoln("node is the best coordinator, cease further evaluation")
 				Self.Feasible = false
 				return
 			}
-		} else { // There is one or more coordinators already, move to evaluating feasible coordinators
+		} else {
+			log.Infoln("There is one or more coordinators already, move to evaluating feasible coordinators")
 			beats.evaluateFeas()
 			return
 		}
@@ -152,19 +172,30 @@ func (beats Beats) Evaluate() {
 // Evaluate assesses the set of known nodes to determine which node has/should have the Feasible Coordinator role
 func (beats Beats) evaluateFeas() {
 	if beats.feasCount() == 0 {
-		if Self.Feasible { // This node is the uncontested feasible coordinator, no further evaluation
+		if Self.Feasible {
+			log.Infoln("This node is the uncontested feasible coordinator, no further evaluation")
 			return
-		} else { // No feasible coordinators exist
+		} else {
+			log.Infoln("// No feasible coordinators exist")
 			best, _ := beats.bestFeas()
-			if best < Self.ID { // This node is the best possible feasible coordinator, set
+			if best < node.Self.ID {
+				log.Infoln("// This node is not the best possible feasible coordinator, unset")
+				Self.Feasible = false
+				return
+
+			} else {
+				log.Infoln("// This node is the best possible feasible coordinator, set")
 				Self.Feasible = true
+				return
 			}
-			return
+
 		}
 	} else {
-		if Self.Feasible { // This node is a contested feasible coordinator
+		if Self.Feasible {
+			log.Infoln("// This node is a contested feasible coordinator")
 			best, _ := beats.bestActiveFeas()
-			if best > Self.ID { // This node is not the best feasible coordinator in contention, unset
+			if best < node.Self.ID {
+				log.Infoln("// This node is not the best feasible coordinator in contention, unset")
 				// WARNING: This means incomplete/one-way message transmission may cause flapping!
 				Self.Feasible = false
 			}
@@ -186,12 +217,11 @@ func (bm BeatMap) AgeOut() {
 	}
 }
 
-func (bm BeatMap) ToBeats() Beats {
-	var r Beats
+func (bm BeatMap) ToBeats() (b Beats) {
 	for _, v := range bm {
-		r = append(r, v)
+		b = append(b, v)
 	}
-	return r
+	return
 }
 
 func (bm BeatMap) Evaluate() {
@@ -199,11 +229,9 @@ func (bm BeatMap) Evaluate() {
 	ba.Evaluate()
 }
 
-func NewBeat() Beat {
-	return Beat{
-		node.Self,
-		Self.Coordinator,
-		Self.Feasible,
-		time.Now(),
+func (bm BeatMap) GetNodes() (n []int64) {
+	for k := range bm {
+		n = append(n, k)
 	}
+	return
 }

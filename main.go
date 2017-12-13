@@ -98,19 +98,20 @@ func checkHeartbeats(result chan error, statusChans map[string]chan error) {
 			}
 			switch v := routineStatus[k].(type) {
 			case heartbeat.RoutineNormal:
-				//check if the last normal status is too long ago
-				if time.Since(v.Timestamp).Seconds() > 60 {
+				// check if the last normal status is too long ago
+				if time.Since(v.Timestamp).Seconds() > 120 {
 					log.Infof("Current time %v, timestamp %v", time.Now(), v.Timestamp)
 					result <- errors.Wrapf(v, "Routine %v timed out", k)
 					return
 				}
+			case nil:
+				// no status returned from this routine this round
 			default:
 				// some kind of error
 				result <- errors.Wrapf(v, " From routine: %v", k)
 				//close(result)
 				return
 			}
-			fmt.Printf("finished evaluating routine %v\n", k)
 		}
 		if err := publish.Publish(heartbeat.NewBeat(), time.After(10*time.Second)); err != nil {
 			fmt.Println("died due to can't publish")

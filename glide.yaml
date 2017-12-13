@@ -1,2 +1,4 @@
 package: github.com/alowde/dpoller
-import: []
+import:
+- package: github.com/mattn/go-colorable
+  version: ^0.0.9
