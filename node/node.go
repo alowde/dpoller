@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"github.com/Sirupsen/logrus"
 	"github.com/ccding/go-stun/stun"
 	"github.com/pkg/errors"
 	"math/rand"
@@ -17,7 +18,14 @@ type Node struct {
 
 var Self Node
 
-func Initialise() error {
+var log *logrus.Entry
+
+func Initialise(l logrus.Level) error {
+
+	logrus.SetLevel(l)
+	log = logrus.WithField("routine", "node")
+
+	log.Debug("Attempting to determine external IP address")
 	_, host, err := stun.NewClient().Discover()
 	if err != nil {
 		return errors.Wrap(err, "failed to discover external IP address")
@@ -26,9 +34,11 @@ func Initialise() error {
 	if err != nil {
 		return errors.Wrapf(err, "STUN returned unparseable address %v", host.IP())
 	}
+	log.WithField("ipAddress", ip).Debug("Determined external IP address")
 
 	rand.Seed(time.Now().UnixNano())
 	Self.ID = rand.Int63()
+	log.WithField("nodeID", Self.ID).Debug("Setting ID")
 	Self.EIP = ip
 	return nil
 }

@@ -2,13 +2,16 @@ package url
 
 import (
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
+	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/publish"
 	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 	"time"
 )
+
+var log *logrus.Entry
 
 type testRun struct {
 	urltest.Test
@@ -24,12 +27,22 @@ func (tr *testRun) run() {
 
 var Tests urltest.Tests
 
-func Init(config []byte) (routineStatus chan error, err error) {
+func Init(config []byte, ll logrus.Level) (routineStatus chan error, err error) {
+
+	logrus.SetLevel(ll)
+	log = logrus.WithFields(logrus.Fields{
+		"routine": "url",
+		"ID":      node.Self.ID,
+	})
+
 	if err = json.Unmarshal(config, &Tests); err != nil {
 		return nil, errors.Wrap(err, "unable to parse URL config")
 	}
-	for _, v := range Tests { // TODO: rewrite this one as a more useful log
-		log.WithField("routine", "test").Info(v)
+
+	if log.Level == logrus.DebugLevel {
+		for _, v := range Tests {
+			log.WithField("routine", "test").Debug(v)
+		}
 	}
 	routineStatus = make(chan error, 300)
 	go runTests(routineStatus)

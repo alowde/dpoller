@@ -3,13 +3,16 @@ package listen
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
+	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"time"
 )
+
+var log *logrus.Entry
 
 type Config struct {
 	Host     string `json:"host"`
@@ -153,7 +156,15 @@ var brokerInstance *broker
 
 // Init turns the provided config []byte into a validated amqpBroker, generates the listen
 // channels and calls listen to spawn a parser for the incoming messages.
-func Init(config []byte) (result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status, err error) {
+func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status, err error) {
+
+	logrus.SetLevel(ll)
+	log = logrus.WithFields(logrus.Fields{
+		"routine": "amqpListen",
+		"ID":      node.Self.ID,
+	})
+
+	log.Debug("Initialising AMQP listener")
 	brokerInstance, err = newBroker(config)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "could not initialise listener")
@@ -189,31 +200,31 @@ loop:
 			case "status":
 				var s urltest.Status
 				if err := json.Unmarshal(message.Body, &s); err != nil {
-					log.WithFields(log.Fields{
+					log.WithFields(logrus.Fields{
 						"error":    err,
 						"delivery": fmt.Sprintf("%#v", message),
 					}).Warn("failed to decode a Status delivery, skipping")
 					continue
 				}
-				log.WithFields(log.Fields{
+				log.WithFields(logrus.Fields{
 					"status": fmt.Sprintf("%#v", s),
 				}).Debug("decoded a status")
 				schan <- s
 			case "heartbeat":
 				var b heartbeat.Beat
 				if err := json.Unmarshal(message.Body, &b); err != nil {
-					log.WithFields(log.Fields{
+					log.WithFields(logrus.Fields{
 						"error":    err,
 						"delivery": fmt.Sprintf("%#v", message),
 					}).Warn("failed to decode a Heartbeat delivery, skipping")
 					continue
 				}
-				log.WithFields(log.Fields{
+				log.WithFields(logrus.Fields{
 					"beat": fmt.Sprintf("%#v", b),
 				}).Debug("decoded a Heartbeat delivery")
 				hchan <- b
 			default:
-				log.WithFields(log.Fields{
+				log.WithFields(logrus.Fields{
 					"type": message.Type,
 				}).Warn("received unknown delivery type")
 			}

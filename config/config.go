@@ -1,9 +1,12 @@
 package config
 
-import "github.com/pkg/errors"
-import "encoding/json"
-import "io/ioutil"
-import "net/http"
+import (
+	"encoding/json"
+	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
+	"io/ioutil"
+	"net/http"
+)
 
 type configSkeleton struct {
 	Listen    *json.RawMessage `json:"listen-config"`
@@ -16,10 +19,18 @@ type configSkeleton struct {
 
 var Unparsed configSkeleton
 
-func Load() error {
+var log *logrus.Entry
+
+func Load(l logrus.Level) error {
+
+	logrus.SetLevel(l)
+	log = logrus.WithField("routine", "config")
+
+	log.Debug("Loading static configuration")
 	if err := staticInitialise(); err != nil {
 		return errors.Wrap(err, "could not initialise static config")
 	}
+	log.Debug("Loading http configuration")
 	if err := httpInitialise(); err != nil {
 		return errors.Wrap(err, "could not initialise http config")
 	}
@@ -43,10 +54,12 @@ func staticInitialise() error {
 	} else if Unparsed.Contacts == nil {
 		return errors.New("undefined contacts block")
 	}
+	log.WithField("configJson", &Unparsed).Debug("Loaded configuration file")
 	return nil
 }
 
 func httpInitialise() error {
+	log.Debug("Loading http configuration")
 	res, err := http.Get(Unparsed.ConfigURL)
 	if err != nil {
 		return errors.Wrap(err, "couldn't read data from Config URL")

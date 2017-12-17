@@ -1,13 +1,24 @@
 package consensus
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/heartbeat"
+	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
 	"time"
 )
 
-func Init(in chan urltest.Status) (routineStatus chan error, err error) {
+var log *logrus.Entry
+
+func Init(in chan urltest.Status, ll logrus.Level) (routineStatus chan error, err error) {
+
+	logrus.SetLevel(ll)
+	log = logrus.WithFields(logrus.Fields{
+		"routine": "consensus",
+		"ID":      node.Self.ID,
+	})
+
 	routineStatus = make(chan error, 10)
 	go checkConsensus(in, routineStatus)
 
@@ -23,6 +34,7 @@ func checkConsensus(in chan urltest.Status, routineStatus chan error) {
 			select {
 			case <-interval:
 				if heartbeat.Self.Coordinator { // Only the coordinator checks URL statuses
+					log.Debug("Checking consensus")
 					deduped := urlStatuses.Dedupe()
 					alert.ProcessAlerts(deduped.GetFailed())
 				}

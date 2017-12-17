@@ -3,7 +3,9 @@ package publish
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
+	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
@@ -12,6 +14,7 @@ import (
 
 var schan chan urltest.Status // channel for internally publishing url statuses
 var hchan chan heartbeat.Beat // channel for internally publishing heartbeats
+var log *logrus.Entry
 
 type Config struct {
 	Host     string `json:"host"`
@@ -103,9 +106,15 @@ func newBroker(config []byte) (*broker, error) {
 var brokerInstance *broker
 
 // Init turns the provided config []byte into a validated amqpBroker and connects
-func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status) (err error) {
+func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status, ll logrus.Level) (err error) {
 	schan = s
 	hchan = h
+	logrus.SetLevel(ll)
+	log = logrus.WithFields(logrus.Fields{
+		"routine": "amqpPublisher",
+		"ID":      node.Self.ID,
+	})
+
 	brokerInstance, err = newBroker(config)
 	if err != nil {
 		return errors.Wrap(err, "could not initialise publisher")
@@ -121,6 +130,8 @@ func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status) (err erro
 //func (b *broker) publishHeartbeat(beat heartbeat.Beat, deadline <-chan time.Time) error {
 func Publish(i interface{}, deadline <-chan time.Time) error {
 	var msgtype string
+
+	log.Debug("Attempting to publish a message")
 
 	switch v := i.(type) {
 	case heartbeat.Beat:

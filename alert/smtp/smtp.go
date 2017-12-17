@@ -3,6 +3,8 @@ package smtp
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Sirupsen/logrus"
+	"github.com/alowde/dpoller/node"
 	"net/smtp"
 )
 
@@ -16,6 +18,8 @@ var Config struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+var log *logrus.Entry
 
 func (c smtpContact) SendAlert() error {
 	smsg := fmt.Sprintf("To: %v\r\n"+
@@ -34,10 +38,18 @@ func (c smtpContact) GetName() string {
 }
 
 // Initialise sets configuration for the package associated with this contact
-func (c smtpContact) Initialise(message json.RawMessage) error {
+func (c smtpContact) Initialise(message json.RawMessage, ll logrus.Level) error {
+	logrus.SetLevel(ll)
+
+	log = logrus.WithFields(logrus.Fields{
+		"routine": "smtpAlert",
+		"ID":      node.Self.ID,
+	})
+
 	if err := json.Unmarshal(message, &Config); err != nil {
 		return err
 	}
+	log.Debug("Successfully handled a configuration as an SMTP config")
 	return nil
 }
 

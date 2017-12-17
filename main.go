@@ -1,8 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/config"
 	"github.com/alowde/dpoller/consensus"
@@ -10,9 +11,11 @@ import (
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/listen"
 	"github.com/alowde/dpoller/node"
+	"github.com/alowde/dpoller/pkg/flags"
 	"github.com/alowde/dpoller/publish"
 	"github.com/alowde/dpoller/url"
 	"github.com/alowde/dpoller/url/urltest"
+
 	"github.com/pkg/errors"
 	"time"
 )
@@ -23,12 +26,19 @@ var heartbeatResult chan error
 var schan chan urltest.Status // schan passes individual status messages from listeners and test to consensus evaluation
 var hchan chan heartbeat.Beat // hchan passes heartbeats from listeners and heartbeat to coordinator
 
-var logger = log.WithField("routine", "main")
+var log *logrus.Entry
+
+func init() {
+	flags.Create()
+}
 
 func initialise() error {
 
-	// TODO: allow log level change
-	logger.Level = log.DebugLevel
+	flag.Parse()
+	flags.Fill()
+
+	logrus.SetLevel(flags.MainLog.Level)
+	log = logrus.WithField("routine", "main")
 
 	routineStatus = make(map[string]chan error)
 
@@ -36,29 +46,30 @@ func initialise() error {
 
 	var err error
 
-	if err := config.Load(); err != nil {
+	log.Debug("lets begin")
+	if err := config.Load(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not load config")
 	}
-	if err := node.Initialise(); err != nil {
+	if err := node.Initialise(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise node data")
 	}
-	if routineStatus["listen"], hchan, schan, err = listen.Init(*config.Unparsed.Listen); err == nil {
-		if routineStatus["coordinate"], err = coordinate.Init(hchan); err != nil {
+	if routineStatus["listen"], hchan, schan, err = listen.Init(*config.Unparsed.Listen, flags.ListenLog.Level); err == nil {
+		if routineStatus["coordinate"], err = coordinate.Init(hchan, flags.CoordLog.Level); err != nil {
 			return errors.Wrap(err, "could not initialise coordinator routine")
 		}
-		if routineStatus["consensus"], err = consensus.Init(schan); err != nil {
+		if routineStatus["consensus"], err = consensus.Init(schan, flags.ConsensusLog.Level); err != nil {
 			return errors.Wrap(err, "could not initialise consensus monitoring routine")
 		}
 	} else {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
-	if err := publish.Init(*config.Unparsed.Publish, hchan, schan); err != nil {
+	if err := publish.Init(*config.Unparsed.Publish, hchan, schan, flags.PubLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise publish functions")
 	}
-	if routineStatus["url"], err = url.Init(*config.Unparsed.Tests); err != nil {
+	if routineStatus["url"], err = url.Init(*config.Unparsed.Tests, flags.UrlLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
-	if err := alert.Init(*config.Unparsed.Alert, *config.Unparsed.Contacts); err != nil {
+	if err := alert.Init(*config.Unparsed.Alert, *config.Unparsed.Contacts, flags.AlertLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise alert function")
 	}
 	return nil

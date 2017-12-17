@@ -2,7 +2,9 @@ package alert
 
 import (
 	"encoding/json"
+	"github.com/Sirupsen/logrus"
 	alertSmtp "github.com/alowde/dpoller/alert/smtp"
+	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 )
@@ -10,12 +12,20 @@ import (
 type Contact interface {
 	SendAlert() error
 	GetName() string
-	Initialise(json.RawMessage) error
+	Initialise(json.RawMessage, logrus.Level) error
 }
 
 var contacts []Contact
+var log *logrus.Entry
 
-func Init(contactJson json.RawMessage, alertConfig json.RawMessage) error {
+func Init(contactJson json.RawMessage, alertConfig json.RawMessage, ll logrus.Level) error {
+
+	logrus.SetLevel(ll)
+	log = logrus.WithFields(logrus.Fields{
+		"routine": "alert",
+		"ID":      node.Self.ID,
+	})
+
 	var err error
 	var Cja []json.RawMessage
 	if err := json.Unmarshal(contactJson, &Cja); err != nil {
@@ -31,9 +41,10 @@ func Init(contactJson json.RawMessage, alertConfig json.RawMessage) error {
 		return errors.New("could not parse alert configuration collection (is it an array?)")
 	}
 	// TODO: implement configs as structs with the specific package type included
+	log.Debug("Attempting to configure alert packages")
 	for _, v := range AlertConfigurations {
 		for _, c := range contacts {
-			if err := c.Initialise(v); err == nil {
+			if err := c.Initialise(v, ll); err == nil {
 				break // a contact handled the configuration, no need to try more
 			}
 		}
