@@ -46,13 +46,13 @@ func initialise() error {
 
 	var err error
 
-	log.Debug("lets begin")
 	if err := config.Load(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not load config")
 	}
 	if err := node.Initialise(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise node data")
 	}
+	heartbeat.Init(flags.BeatLog.Level)
 	if routineStatus["listen"], hchan, schan, err = listen.Init(*config.Unparsed.Listen, flags.ListenLog.Level); err == nil {
 		if routineStatus["coordinate"], err = coordinate.Init(hchan, flags.CoordLog.Level); err != nil {
 			return errors.Wrap(err, "could not initialise coordinator routine")

@@ -2,11 +2,22 @@ package heartbeat
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/node"
 	"math"
 	"time"
 )
+
+var log *logrus.Entry
+
+func Init(ll logrus.Level) {
+
+	logrus.SetLevel(ll)
+	log = logrus.WithFields(logrus.Fields{
+		"routine": "heartbeat",
+		"ID":      node.Self.ID,
+	})
+}
 
 // RoutineNormal is used by routines to indicate normal healthy status
 type RoutineNormal struct {
@@ -176,15 +187,15 @@ func (beats Beats) evaluateFeas() {
 			log.Infoln("This node is the uncontested feasible coordinator, no further evaluation")
 			return
 		} else {
-			log.Infoln("// No feasible coordinators exist")
+			log.Infoln("No feasible coordinators exist")
 			best, _ := beats.bestFeas()
 			if best < node.Self.ID {
-				log.Infoln("// This node is not the best possible feasible coordinator, unset")
+				log.Infoln("This node is not the best possible feasible coordinator, unset")
 				Self.Feasible = false
 				return
 
 			} else {
-				log.Infoln("// This node is the best possible feasible coordinator, set")
+				log.Infoln("This node is the best possible feasible coordinator, set")
 				Self.Feasible = true
 				return
 			}
@@ -192,10 +203,10 @@ func (beats Beats) evaluateFeas() {
 		}
 	} else {
 		if Self.Feasible {
-			log.Infoln("// This node is a contested feasible coordinator")
+			log.Infoln("This node is a contested feasible coordinator")
 			best, _ := beats.bestActiveFeas()
 			if best < node.Self.ID {
-				log.Infoln("// This node is not the best feasible coordinator in contention, unset")
+				log.Infoln("This node is not the best feasible coordinator in contention, unset")
 				// WARNING: This means incomplete/one-way message transmission may cause flapping!
 				Self.Feasible = false
 			}
