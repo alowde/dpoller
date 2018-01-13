@@ -7,6 +7,7 @@ import (
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
+	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"time"
@@ -28,13 +29,13 @@ type Config struct {
 
 func (c Config) validate() error {
 	if len(c.Host) <= 0 {
-		return fmt.Errorf("invalid host field")
+		return errors.New("invalid host field")
 	}
 	if len(c.User) <= 0 {
-		return fmt.Errorf("invalid user field")
+		return errors.New("invalid user field")
 	}
 	if len(c.Pass) <= 0 {
-		return fmt.Errorf("invalid pass field")
+		return errors.New("invalid pass field")
 	}
 	return nil
 }
@@ -59,8 +60,11 @@ func (b *broker) connect() error {
 		b.Port,
 	)
 	if b.connection, err = amqp.Dial(uri); err != nil {
-		fmt.Printf("%#v\n", uri)
-		return errors.Wrap(err, "could not connect to AMQP broker")
+		log.WithFields(logrus.Fields{
+			"url":   uri,
+			"error": err,
+		}).Warn("error while dialling AMQP broker")
+		return errors.Wrap(err, "while dialling AMQP broker")
 	}
 
 	if b.achannel, err = b.connection.Channel(); err != nil {
@@ -109,16 +113,23 @@ var brokerInstance *broker
 func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status, ll logrus.Level) (err error) {
 	schan = s
 	hchan = h
-	logrus.SetLevel(ll)
-	log = logrus.WithFields(logrus.Fields{
+
+	var logger = logrus.New()
+	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
+	logger.Out = colorable.NewColorableStdout()
+	logger.SetLevel(ll)
+
+	log = logger.WithFields(logrus.Fields{
 		"routine": "amqpPublisher",
 		"ID":      node.Self.ID,
 	})
 
+	log.Debug("Initialising publisher")
 	brokerInstance, err = newBroker(config)
 	if err != nil {
 		return errors.Wrap(err, "could not initialise publisher")
 	}
+	log.Debug("Connecting to AMQP broker")
 	// Connecting here helps detect issues early
 	if err := brokerInstance.connect(); err != nil {
 		return errors.Wrap(err, "error while connecting publisher")
@@ -126,13 +137,10 @@ func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status, ll logrus
 	return nil
 }
 
-// listen ensures the connection is live and sets up a parsing routine
-//func (b *broker) publishHeartbeat(beat heartbeat.Beat, deadline <-chan time.Time) error {
 func Publish(i interface{}, deadline <-chan time.Time) error {
 	var msgtype string
 
 	log.Debug("Attempting to publish a message")
-
 	switch v := i.(type) {
 	case heartbeat.Beat:
 		msgtype = "heartbeat"
@@ -141,6 +149,9 @@ func Publish(i interface{}, deadline <-chan time.Time) error {
 		msgtype = "status"
 		schan <- v
 	default:
+		log.WithFields(logrus.Fields{
+			"message": i,
+		}).Warn("can't publish unknown message type")
 		return errors.New("unknown type of message")
 	}
 

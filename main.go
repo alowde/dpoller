@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/config"
@@ -16,6 +15,7 @@ import (
 	"github.com/alowde/dpoller/url"
 	"github.com/alowde/dpoller/url/urltest"
 
+	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -37,6 +37,8 @@ func initialise() error {
 	flag.Parse()
 	flags.Fill()
 
+	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true})
+	logrus.SetOutput(colorable.NewColorableStdout())
 	logrus.SetLevel(flags.MainLog.Level)
 	log = logrus.WithField("routine", "main")
 
@@ -77,13 +79,10 @@ func initialise() error {
 
 func main() {
 	if err := initialise(); err != nil {
-		fmt.Printf("%+v\n", err)
-		return
+		log.Fatalf("%+v\n", err)
 	}
 	go checkHeartbeats(heartbeatResult, routineStatus)
-
-	fmt.Printf("End! got result %+v", <-heartbeatResult)
-
+	log.Fatalf("End! got result %+v", <-heartbeatResult)
 }
 
 // checkHeartbeats
@@ -125,7 +124,7 @@ func checkHeartbeats(result chan error, statusChans map[string]chan error) {
 			}
 		}
 		if err := publish.Publish(heartbeat.NewBeat(), time.After(10*time.Second)); err != nil {
-			fmt.Println("died due to can't publish")
+			log.Warn("died due to can't publish")
 			result <- err
 			close(result)
 			return

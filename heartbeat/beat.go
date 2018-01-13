@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/node"
+	"github.com/mattn/go-colorable"
 	"math"
 	"time"
 )
@@ -12,8 +13,12 @@ var log *logrus.Entry
 
 func Init(ll logrus.Level) {
 
-	logrus.SetLevel(ll)
-	log = logrus.WithFields(logrus.Fields{
+	var logger = logrus.New()
+	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
+	logger.Out = colorable.NewColorableStdout()
+	logger.SetLevel(ll)
+
+	log = logger.WithFields(logrus.Fields{
 		"routine": "heartbeat",
 		"ID":      node.Self.ID,
 	})
@@ -58,7 +63,7 @@ var Self Beat
 
 type Beats []Beat
 
-func (beats Beats) coordCount() (count int) {
+func (beats Beats) CoordCount() (count int) {
 	for _, b := range beats {
 		if b.Coordinator {
 			count++
@@ -67,7 +72,7 @@ func (beats Beats) coordCount() (count int) {
 	return
 }
 
-func (beats Beats) feasCount() (count int) {
+func (beats Beats) FeasCount() (count int) {
 	for _, b := range beats {
 		if b.Feasible {
 			count++
@@ -141,7 +146,7 @@ func (beats Beats) toBeatMap() (result BeatMap) {
 
 // Evaluate assesses the set of known nodes to determine which node has/should have the Coordinator role
 func (beats Beats) Evaluate() {
-	if beats.coordCount() == 0 {
+	if beats.CoordCount() == 0 {
 		if Self.Coordinator {
 			log.Infoln("This node is the uncontested coordinator, no further evaluation")
 			Self.Feasible = false
@@ -182,7 +187,7 @@ func (beats Beats) Evaluate() {
 
 // Evaluate assesses the set of known nodes to determine which node has/should have the Feasible Coordinator role
 func (beats Beats) evaluateFeas() {
-	if beats.feasCount() == 0 {
+	if beats.FeasCount() == 0 {
 		if Self.Feasible {
 			log.Infoln("This node is the uncontested feasible coordinator, no further evaluation")
 			return

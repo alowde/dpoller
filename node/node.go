@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/ccding/go-stun/stun"
+	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	"math/rand"
 	"net"
@@ -22,8 +23,12 @@ var log *logrus.Entry
 
 func Initialise(l logrus.Level) error {
 
-	logrus.SetLevel(l)
-	log = logrus.WithField("routine", "node")
+	var logger = logrus.New()
+	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
+	logger.Out = colorable.NewColorableStdout()
+	logger.SetLevel(l)
+
+	log = logger.WithField("routine", "node")
 
 	log.Debug("Attempting to determine external IP address")
 	_, host, err := stun.NewClient().Discover()

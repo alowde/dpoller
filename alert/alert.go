@@ -6,6 +6,7 @@ import (
 	alertSmtp "github.com/alowde/dpoller/alert/smtp"
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
+	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 )
 
@@ -20,8 +21,12 @@ var log *logrus.Entry
 
 func Init(contactJson json.RawMessage, alertConfig json.RawMessage, ll logrus.Level) error {
 
-	logrus.SetLevel(ll)
-	log = logrus.WithFields(logrus.Fields{
+	var logger = logrus.New()
+	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
+	logger.Out = colorable.NewColorableStdout()
+	logger.SetLevel(ll)
+
+	log = logger.WithFields(logrus.Fields{
 		"routine": "alert",
 		"ID":      node.Self.ID,
 	})

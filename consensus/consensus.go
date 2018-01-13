@@ -6,6 +6,7 @@ import (
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
+	"github.com/mattn/go-colorable"
 	"time"
 )
 
@@ -13,8 +14,12 @@ var log *logrus.Entry
 
 func Init(in chan urltest.Status, ll logrus.Level) (routineStatus chan error, err error) {
 
-	logrus.SetLevel(ll)
-	log = logrus.WithFields(logrus.Fields{
+	var logger = logrus.New()
+	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
+	logger.Out = colorable.NewColorableStdout()
+	logger.SetLevel(ll)
+
+	log = logger.WithFields(logrus.Fields{
 		"routine": "consensus",
 		"ID":      node.Self.ID,
 	})
