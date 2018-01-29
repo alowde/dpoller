@@ -185,50 +185,53 @@ func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbe
 	return result, hchan, schan, nil
 }
 
-// TODO: Implement watchdog
 func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status) {
-loop:
 	for {
 		heartbeatTimer := time.After(15 * time.Second)
-		select {
-		case <-heartbeatTimer:
-			result <- heartbeat.RoutineNormal{Timestamp: time.Now()}
-			continue loop
-		case message := <-inbox:
-			message.Ack(true)
-			switch message.Type {
-			case "status":
-				var s urltest.Status
-				if err := json.Unmarshal(message.Body, &s); err != nil {
+	loop:
+		for {
+			select {
+			case <-heartbeatTimer:
+				result <- heartbeat.RoutineNormal{Timestamp: time.Now()}
+				continue loop
+			case message := <-inbox:
+				message.Ack(true)
+				switch message.Type {
+				case "status":
+					var s urltest.Status
+					if err := json.Unmarshal(message.Body, &s); err != nil {
+						log.WithFields(logrus.Fields{
+							"error":    err,
+							"delivery": fmt.Sprintf("%#v", message),
+						}).Warn("failed to decode a Status delivery, skipping")
+						continue
+					}
+					log.Info("received a Status")
 					log.WithFields(logrus.Fields{
-						"error":    err,
-						"delivery": fmt.Sprintf("%#v", message),
-					}).Warn("failed to decode a Status delivery, skipping")
-					continue
-				}
-				log.WithFields(logrus.Fields{
-					"status": fmt.Sprintf("%#v", s),
-				}).Debug("decoded a status")
-				schan <- s
-			case "heartbeat":
-				var b heartbeat.Beat
-				if err := json.Unmarshal(message.Body, &b); err != nil {
+						"status": fmt.Sprintf("%#v", s),
+					}).Debug("decoded a Status")
+					schan <- s
+				case "heartbeat":
+					var b heartbeat.Beat
+					if err := json.Unmarshal(message.Body, &b); err != nil {
+						log.WithFields(logrus.Fields{
+							"error":    err,
+							"delivery": fmt.Sprintf("%#v", message),
+						}).Warn("failed to decode a Heartbeat delivery, skipping")
+						continue
+					}
+					log.Info("received a Heartbeat")
 					log.WithFields(logrus.Fields{
-						"error":    err,
-						"delivery": fmt.Sprintf("%#v", message),
-					}).Warn("failed to decode a Heartbeat delivery, skipping")
-					continue
+						"beat": fmt.Sprintf("%#v", b),
+					}).Debug("decoded a Heartbeat")
+					hchan <- b
+				default:
+					log.WithFields(logrus.Fields{
+						"type": message.Type,
+					}).Warn("received unknown delivery type")
 				}
-				log.WithFields(logrus.Fields{
-					"beat": fmt.Sprintf("%#v", b),
-				}).Debug("decoded a Heartbeat delivery")
-				hchan <- b
-			default:
-				log.WithFields(logrus.Fields{
-					"type": message.Type,
-				}).Warn("received unknown delivery type")
-			}
 
+			}
 		}
 	}
 }

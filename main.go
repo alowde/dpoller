@@ -89,7 +89,13 @@ func main() {
 func checkHeartbeats(result chan error, statusChans map[string]chan error) {
 	for {
 		var routineStatus = make(map[string]error)
-		wait := time.After(60 * time.Second)
+		var waitTime time.Duration
+		if heartbeat.Self.Coordinator || heartbeat.Self.Feasible {
+			waitTime = 5 * time.Second
+		} else {
+			waitTime = 30 * time.Second
+		}
+		wait := time.After(waitTime)
 		<-wait
 		for k, c := range statusChans {
 		out:

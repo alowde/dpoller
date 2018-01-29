@@ -140,12 +140,14 @@ func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status, ll logrus
 func Publish(i interface{}, deadline <-chan time.Time) error {
 	var msgtype string
 
-	log.Debug("Attempting to publish a message")
+	log.Debug("Publish() called")
 	switch v := i.(type) {
 	case heartbeat.Beat:
+		log.Debug("publishing a heartbeat")
 		msgtype = "heartbeat"
 		hchan <- v
 	case urltest.Status:
+		log.Debug("publishing a status")
 		msgtype = "status"
 		schan <- v
 	default:
@@ -178,8 +180,10 @@ func Publish(i interface{}, deadline <-chan time.Time) error {
 			}
 		default:
 			if err := brokerInstance.achannel.Publish(brokerInstance.Config.Exchange, msgtype, false, false, msg); err == nil {
+				log.Debug("message published OK")
 				return nil
 			} else {
+				log.WithField("message", msg).Warn("received error while publishing message")
 				return errors.Wrap(err, "failed to publish to amqp")
 			}
 		}
