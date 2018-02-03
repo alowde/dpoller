@@ -111,7 +111,6 @@ func (beats Beats) bestFeas() (feasID int64, e error) {
 	for _, b := range beats {
 		e = nil
 		if b.ID < feasID && !b.Coordinator {
-			fmt.Printf("found lower beat ID %v\n", b.ID)
 			feasID = b.ID
 		}
 	}
