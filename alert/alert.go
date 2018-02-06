@@ -32,6 +32,8 @@ func Init(contactJson json.RawMessage, alertConfig json.RawMessage, ll logrus.Le
 	})
 
 	var err error
+
+	// process contact configuration
 	var Cja []json.RawMessage
 	if err := json.Unmarshal(contactJson, &Cja); err != nil {
 		return errors.Wrap(err, "could not parse contact configuration collection (is it an array?)")
@@ -47,12 +49,16 @@ func Init(contactJson json.RawMessage, alertConfig json.RawMessage, ll logrus.Le
 	}
 	// TODO: implement configs as structs with the specific package type included
 	log.Debug("Attempting to configure alert packages")
+
+handled:
 	for _, v := range AlertConfigurations {
+		log.WithField("config", string(v)).Debug("Processing configuration")
 		for _, c := range contacts {
 			if err := c.Initialise(v, ll); err == nil {
-				break // a contact handled the configuration, no need to try more
+				break handled // a contact handled the configuration, no need to try more
 			}
 		}
+		log.WithField("config", string(v)).Warn("No alert handler accepted config")
 	}
 	return nil
 }
@@ -72,11 +78,14 @@ func ProcessAlerts(urls urltest.Statuses) error {
 
 // parseContacts calls the various packages and returns the abstracted Contact interface set
 func parseContacts(message []json.RawMessage) (c []Contact, e error) {
+	log.Debug(string(message[0]))
 	// We can't assign the returned array directly as it doesn't meet the interface requirements, but we can copy individual elements
 	s := alertSmtp.ParseContacts(message)
+	log.WithField("successfully parsed", len(s)).Debug("parsed SMTP contacts")
 	for _, v := range s {
 		c = append(c, v)
 	}
+	log.WithField("successfully parsed", len(c)).Info("parsed all contacts")
 	// Further packages to come...
 	return c, nil
 }

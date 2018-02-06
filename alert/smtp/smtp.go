@@ -9,8 +9,8 @@ import (
 )
 
 type smtpContact struct {
-	name  string
-	email string
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 var Config struct {
@@ -25,8 +25,8 @@ func (c smtpContact) SendAlert() error {
 	smsg := fmt.Sprintf("To: %v\r\n"+
 		"Subject: Alert from dpoller\r\n\r\n"+
 		"An alert occurred",
-		c.email)
-	to := []string{c.email}
+		c.Email)
+	to := []string{c.Email}
 	msg := []byte(smsg)
 	auth := smtp.PlainAuth("", Config.Username, Config.Password, Config.Server)
 	err := smtp.SendMail(Config.Server, auth, "dpoller@example.com", to, msg)
@@ -34,7 +34,7 @@ func (c smtpContact) SendAlert() error {
 }
 
 func (c smtpContact) GetName() string {
-	return c.name
+	return c.Name
 }
 
 // Initialise sets configuration for the package associated with this contact
@@ -58,9 +58,10 @@ func ParseContacts(msg []json.RawMessage) (sca []smtpContact) {
 	for _, v := range msg {
 		var S smtpContact
 		if err := json.Unmarshal(v, &S); err != nil {
+			log.Fatal(err)
 			break // continue attempting to parse other JSON objects
 		}
 		sca = append(sca, S)
 	}
-	return []smtpContact{}
+	return sca
 }

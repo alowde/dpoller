@@ -71,7 +71,7 @@ func initialise() error {
 	if routineStatus["url"], err = url.Init(*config.Unparsed.Tests, flags.UrlLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
-	if err := alert.Init(*config.Unparsed.Alert, *config.Unparsed.Contacts, flags.AlertLog.Level); err != nil {
+	if err := alert.Init(*config.Unparsed.Contacts, *config.Unparsed.Alert, flags.AlertLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise alert function")
 	}
 	return nil
