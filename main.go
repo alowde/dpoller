@@ -4,18 +4,18 @@ import (
 	"flag"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
+	_ "github.com/alowde/dpoller/alert/smtp"
 	"github.com/alowde/dpoller/config"
 	"github.com/alowde/dpoller/consensus"
 	"github.com/alowde/dpoller/coordinate"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/listen"
+	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/pkg/flags"
 	"github.com/alowde/dpoller/publish"
 	"github.com/alowde/dpoller/url"
 	"github.com/alowde/dpoller/url/urltest"
-
-	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -37,10 +37,7 @@ func initialise() error {
 	flag.Parse()
 	flags.Fill()
 
-	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true})
-	logrus.SetOutput(colorable.NewColorableStdout())
-	logrus.SetLevel(flags.MainLog.Level)
-	log = logrus.WithField("routine", "main")
+	log = logger.New("main", flags.MainLog.Level)
 
 	routineStatus = make(map[string]chan error)
 

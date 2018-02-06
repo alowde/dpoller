@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"github.com/Sirupsen/logrus"
-	"github.com/mattn/go-colorable"
+	"github.com/alowde/dpoller/logger"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
@@ -22,14 +22,9 @@ var Unparsed configSkeleton
 
 var log *logrus.Entry
 
-func Load(l logrus.Level) error {
+func Load(ll logrus.Level) error {
 
-	var logger = logrus.New()
-	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
-	logger.Out = colorable.NewColorableStdout()
-	logger.SetLevel(l)
-
-	log = logger.WithField("routine", "config")
+	log = logger.New("config", ll)
 
 	log.Debug("Loading static configuration")
 	if err := staticInitialise(); err != nil {

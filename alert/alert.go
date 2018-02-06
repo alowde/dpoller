@@ -2,63 +2,67 @@ package alert
 
 import (
 	"encoding/json"
+
 	"github.com/Sirupsen/logrus"
-	alertSmtp "github.com/alowde/dpoller/alert/smtp"
+	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
-	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 )
 
 type Contact interface {
 	SendAlert() error
 	GetName() string
-	Initialise(json.RawMessage, logrus.Level) error
+}
+
+type configParseFunction func(message json.RawMessage, ll logrus.Level) error
+type contactParseFunction func(message json.RawMessage) (contact Contact, err error)
+
+var configParseFunctions = make(map[string]configParseFunction)
+var contactParseFunctions = make(map[string]contactParseFunction)
+
+func RegisterConfigFunction(name string, f configParseFunction) {
+	configParseFunctions[name] = f
+}
+func RegisterContactFunction(name string, f contactParseFunction) {
+	contactParseFunctions[name] = f
 }
 
 var contacts []Contact
 var log *logrus.Entry
 
-func Init(contactJson json.RawMessage, alertConfig json.RawMessage, ll logrus.Level) error {
+func Init(contactJson json.RawMessage, alertJson json.RawMessage, ll logrus.Level) error {
 
-	var logger = logrus.New()
-	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
-	logger.Out = colorable.NewColorableStdout()
-	logger.SetLevel(ll)
+	log = logger.New("alert", ll).WithField("ID", node.Self.ID)
 
-	log = logger.WithFields(logrus.Fields{
-		"routine": "alert",
-		"ID":      node.Self.ID,
-	})
+	log.Debug("Parsing alert configurations")
+	var A map[string]json.RawMessage
+	if err := json.Unmarshal(alertJson, &A); err != nil {
+		return errors.Wrap(err, "could not parse alert configuration collection (is it an array?)")
+	}
+	for k, m := range A {
+		log.WithField("package", k).Debug("Configuring alert package")
+		if err := configParseFunctions[k](m, ll); err != nil {
+			return errors.Wrap(err, "while processing alert function config")
+		}
+	}
 
-	var err error
-
-	// process contact configuration
-	var Cja []json.RawMessage
-	if err := json.Unmarshal(contactJson, &Cja); err != nil {
+	log.Debug("Parsing contacts")
+	var C map[string][]json.RawMessage
+	if err := json.Unmarshal(contactJson, &C); err != nil {
 		return errors.Wrap(err, "could not parse contact configuration collection (is it an array?)")
 	}
-	if contacts, err = parseContacts(Cja); err != nil {
-		return errors.Wrap(err, "could not parse contact JSON")
-	}
-	// turn the alert configuration data into an array of individual alert configurations,
-	// then attempt to parse each one against the list of contacts (and in turn, alert packages)
-	var AlertConfigurations []json.RawMessage
-	if err := json.Unmarshal(alertConfig, &AlertConfigurations); err != nil {
-		return errors.New("could not parse alert configuration collection (is it an array?)")
-	}
-	// TODO: implement configs as structs with the specific package type included
-	log.Debug("Attempting to configure alert packages")
-
-handled:
-	for _, v := range AlertConfigurations {
-		log.WithField("config", string(v)).Debug("Processing configuration")
-		for _, c := range contacts {
-			if err := c.Initialise(v, ll); err == nil {
-				break handled // a contact handled the configuration, no need to try more
+	for k, v := range C {
+		for _, c := range v {
+			if f, ok := contactParseFunctions[k]; ok {
+				contact, err := f(c)
+				if err != nil {
+					log.Warn("error while trying to process a contact object, ignoring")
+					continue
+				}
+				contacts = append(contacts, contact)
 			}
 		}
-		log.WithField("config", string(v)).Warn("No alert handler accepted config")
 	}
 	return nil
 }
@@ -74,18 +78,4 @@ func ProcessAlerts(urls urltest.Statuses) error {
 		}
 	}
 	return nil
-}
-
-// parseContacts calls the various packages and returns the abstracted Contact interface set
-func parseContacts(message []json.RawMessage) (c []Contact, e error) {
-	log.Debug(string(message[0]))
-	// We can't assign the returned array directly as it doesn't meet the interface requirements, but we can copy individual elements
-	s := alertSmtp.ParseContacts(message)
-	log.WithField("successfully parsed", len(s)).Debug("parsed SMTP contacts")
-	for _, v := range s {
-		c = append(c, v)
-	}
-	log.WithField("successfully parsed", len(c)).Info("parsed all contacts")
-	// Further packages to come...
-	return c, nil
 }
