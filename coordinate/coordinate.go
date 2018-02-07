@@ -3,8 +3,7 @@ package coordinate
 import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
-	"github.com/alowde/dpoller/node"
-	"github.com/mattn/go-colorable"
+	"github.com/alowde/dpoller/logger"
 	"time"
 )
 
@@ -14,15 +13,8 @@ var log *logrus.Entry
 
 func Init(in chan heartbeat.Beat, ll logrus.Level) (statusReport chan error, err error) {
 
-	var logger = logrus.New()
-	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
-	logger.Out = colorable.NewColorableStdout()
-	logger.SetLevel(ll)
+	log = logger.New("coordinate", ll)
 
-	log = logger.WithFields(logrus.Fields{
-		"routine": "coordinator",
-		"ID":      node.Self.ID,
-	})
 	statusReport = make(chan error, 10)
 	knownBeats = heartbeat.NewBeatMap()
 	go updateKnownBeats(in, statusReport)

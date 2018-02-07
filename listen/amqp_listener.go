@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
-	"github.com/alowde/dpoller/node"
+	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
@@ -158,11 +158,7 @@ var brokerInstance *broker
 // channels and calls listen to spawn a parser for the incoming messages.
 func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status, err error) {
 
-	logrus.SetLevel(ll)
-	log = logrus.WithFields(logrus.Fields{
-		"routine": "amqpListen",
-		"ID":      node.Self.ID,
-	})
+	log = logger.New("amqpListen", ll)
 
 	log.Debug("Initialising AMQP listener")
 	brokerInstance, err = newBroker(config)

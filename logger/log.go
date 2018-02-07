@@ -2,6 +2,7 @@ package logger
 
 import (
 	"github.com/Sirupsen/logrus"
+	"github.com/alowde/dpoller/node"
 	"github.com/mattn/go-colorable"
 )
 
@@ -11,5 +12,9 @@ func New(routine string, level logrus.Level) *logrus.Entry {
 		Formatter: &logrus.TextFormatter{ForceColors: true},
 		Level:     level,
 	}
-	return log.WithField("routine", routine)
+	return log.WithFields(logrus.Fields{
+		"routine": routine,
+		"ID":      node.Self.ID,
+	})
+
 }

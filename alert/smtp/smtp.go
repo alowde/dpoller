@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
-	"github.com/alowde/dpoller/node"
+	"github.com/alowde/dpoller/logger"
 	"net/smtp"
 )
 
@@ -39,12 +39,8 @@ func (c smtpContact) GetName() string {
 }
 
 func initialise(message json.RawMessage, ll logrus.Level) error {
-	logrus.SetLevel(ll)
 
-	log = logrus.WithFields(logrus.Fields{
-		"routine": "smtpAlert",
-		"ID":      node.Self.ID,
-	})
+	log = logger.New("smtpAlert", ll)
 
 	if err := json.Unmarshal(message, &config); err != nil {
 		return err

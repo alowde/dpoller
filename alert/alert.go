@@ -2,10 +2,8 @@ package alert
 
 import (
 	"encoding/json"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/logger"
-	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/url/urltest"
 	"github.com/pkg/errors"
 )
@@ -33,7 +31,7 @@ var log *logrus.Entry
 
 func Init(contactJson json.RawMessage, alertJson json.RawMessage, ll logrus.Level) error {
 
-	log = logger.New("alert", ll).WithField("ID", node.Self.ID)
+	log = logger.New("alert", ll)
 
 	log.Debug("Parsing alert configurations")
 	var A map[string]json.RawMessage

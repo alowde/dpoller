@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
-	"github.com/alowde/dpoller/node"
+	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/publish"
 	"github.com/alowde/dpoller/url/urltest"
-	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -30,15 +29,7 @@ var Tests urltest.Tests
 
 func Init(config []byte, ll logrus.Level) (routineStatus chan error, err error) {
 
-	var logger = logrus.New()
-	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
-	logger.Out = colorable.NewColorableStdout()
-	logger.SetLevel(ll)
-
-	log = logger.WithFields(logrus.Fields{
-		"routine": "url",
-		"ID":      node.Self.ID,
-	})
+	log = logger.New("url", ll)
 
 	if err = json.Unmarshal(config, &Tests); err != nil {
 		return nil, errors.Wrap(err, "unable to parse URL config")

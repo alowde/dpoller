@@ -4,9 +4,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/heartbeat"
-	"github.com/alowde/dpoller/node"
+	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/url/urltest"
-	"github.com/mattn/go-colorable"
 	"time"
 )
 
@@ -14,15 +13,7 @@ var log *logrus.Entry
 
 func Init(in chan urltest.Status, ll logrus.Level) (routineStatus chan error, err error) {
 
-	var logger = logrus.New()
-	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
-	logger.Out = colorable.NewColorableStdout()
-	logger.SetLevel(ll)
-
-	log = logger.WithFields(logrus.Fields{
-		"routine": "consensus",
-		"ID":      node.Self.ID,
-	})
+	log = logger.New("consensus", ll)
 
 	routineStatus = make(chan error, 10)
 	go checkConsensus(in, routineStatus)

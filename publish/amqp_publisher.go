@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
-	"github.com/alowde/dpoller/node"
+	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/url/urltest"
-	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"time"
@@ -114,15 +113,7 @@ func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status, ll logrus
 	schan = s
 	hchan = h
 
-	var logger = logrus.New()
-	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
-	logger.Out = colorable.NewColorableStdout()
-	logger.SetLevel(ll)
-
-	log = logger.WithFields(logrus.Fields{
-		"routine": "amqpPublisher",
-		"ID":      node.Self.ID,
-	})
+	log = logger.New("amqpPublish", ll)
 
 	log.Debug("Initialising publisher")
 	brokerInstance, err = newBroker(config)

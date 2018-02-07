@@ -3,8 +3,8 @@ package heartbeat
 import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
+	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/node"
-	"github.com/mattn/go-colorable"
 	"math"
 	"time"
 )
@@ -13,15 +13,7 @@ var log *logrus.Entry
 
 func Init(ll logrus.Level) {
 
-	var logger = logrus.New()
-	logger.Formatter = &logrus.TextFormatter{ForceColors: true}
-	logger.Out = colorable.NewColorableStdout()
-	logger.SetLevel(ll)
-
-	log = logger.WithFields(logrus.Fields{
-		"routine": "heartbeat",
-		"ID":      node.Self.ID,
-	})
+	log = logger.New("heartbeat", ll)
 }
 
 // RoutineNormal is used by routines to indicate normal healthy status
