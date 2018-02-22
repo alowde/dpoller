@@ -9,8 +9,9 @@ import (
 	"net/smtp"
 )
 
-var config struct {
+var Config struct {
 	Server   string `json:"server"`
+	Port     string `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
@@ -29,8 +30,9 @@ func (c smtpContact) SendAlert() error {
 		c.Email)
 	to := []string{c.Email}
 	msg := []byte(smsg)
-	auth := smtp.PlainAuth("", config.Username, config.Password, config.Server)
-	err := smtp.SendMail(config.Server, auth, "dpoller@example.com", to, msg)
+	auth := smtp.PlainAuth("", Config.Username, Config.Password, Config.Server)
+	host := Config.Server + ":" + Config.Port
+	err := smtp.SendMail(host, auth, "dpoller@example.com", to, msg)
 	return err
 }
 
@@ -42,7 +44,7 @@ func initialise(message json.RawMessage, ll logrus.Level) error {
 
 	log = logger.New("smtpAlert", ll)
 
-	if err := json.Unmarshal(message, &config); err != nil {
+	if err := json.Unmarshal(message, &Config); err != nil {
 		return err
 	}
 	log.Debug("Successfully received SMTP config")

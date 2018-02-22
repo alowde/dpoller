@@ -62,15 +62,18 @@ func Init(contactJson json.RawMessage, alertJson json.RawMessage, ll logrus.Leve
 			}
 		}
 	}
+	log.WithField("contact count", len(contacts)).Info("Finished parsing contacts")
 	return nil
 }
 
-func ProcessAlerts(urls urltest.Statuses) error {
+func ProcessAlerts(urls check.Statuses) error {
 	for _, u := range urls {
 		for _, uc := range u.Url.Contacts {
 			for _, c := range contacts {
 				if uc == c.GetName() {
-					c.SendAlert()
+					if err := c.SendAlert(); err != nil {
+						log.WithField("error", err).Warn("Couldn't send alert message")
+					}
 				}
 			}
 		}

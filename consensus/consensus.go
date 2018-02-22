@@ -33,6 +33,9 @@ func checkConsensus(in chan check.Status, routineStatus chan error) {
 				if heartbeat.Self.Coordinator { // Only the coordinator checks URL statuses
 					log.Debug("Checking consensus")
 					deduped := urlStatuses.Dedupe()
+					if len(deduped.GetFailed()) > 0 {
+						log.WithField("failed count", len(deduped.GetFailed())).Info("Found failed url status")
+					}
 					alert.ProcessAlerts(deduped.GetFailed())
 				}
 				routineStatus <- heartbeat.RoutineNormal{Timestamp: time.Now()}
