@@ -3,10 +3,7 @@ package heartbeat
 import "testing"
 import (
 	"github.com/Sirupsen/logrus"
-
 	"github.com/alowde/dpoller/node"
-
-	"github.com/alowde/dpoller/heartbeat"
 	"net"
 	"time"
 )
@@ -34,7 +31,7 @@ var node4 = node.Node{
 
 var testtime time.Time
 
-var beat1 = Self{
+var beat1 = Beat{
 	node1,
 	false,
 	false,
@@ -42,7 +39,7 @@ var beat1 = Self{
 }
 
 func init() {
-	heartbeat.Init(logrus.FatalLevel)
+	Init(logrus.FatalLevel)
 	testtime, _ = time.Parse("20060102 150405", "20380119 031408") // bonus test
 }
 
@@ -50,27 +47,27 @@ func TestEvaluate(t *testing.T) {
 
 	tables := []struct {
 		knownBeats    Beats
-		self          Self
+		self          Beat
 		shouldBeCoord bool
 		shouldBeFeas  bool
 	}{
 		// one node in initial state
-		{Selfs{Self{node1, false, false, testtime}}, beat1, false, true},
+		{Beats{Beat{node1, false, false, testtime}}, beat1, false, true},
 		// one node after one pass
-		{Selfs{Self{node1, false, true, testtime}}, Self{node1, false, true, testtime}, true, false},
+		{Beats{Beat{node1, false, true, testtime}}, Beat{node1, false, true, testtime}, true, false},
 		// two nodes feas, self loser
-		{Selfs{Self{node2, false, true, testtime}, Self{node1, false, true, testtime}}, Self{node1, false, true, testtime}, false, false},
+		{Beats{Beat{node2, false, true, testtime}, Beat{node1, false, true, testtime}}, Beat{node1, false, true, testtime}, false, false},
 		// two nodes feas, self winner
-		{Selfs{Self{node2, false, true, testtime}, Self{node1, false, true, testtime}}, Self{node2, false, true, testtime}, true, false},
+		{Beats{Beat{node2, false, true, testtime}, Beat{node1, false, true, testtime}}, Beat{node2, false, true, testtime}, true, false},
 		// one coord, one feas, self feasible
-		{Selfs{Self{node2, false, true, testtime}, Self{node1, true, false, testtime}}, Self{node2, false, true, testtime}, false, true},
+		{Beats{Beat{node2, false, true, testtime}, Beat{node1, true, false, testtime}}, Beat{node2, false, true, testtime}, false, true},
 	}
 
 	for _, table := range tables {
-		heartbeat.Self = table.self
+		Self = table.self
 		table.knownBeats.Evaluate()
-		if heartbeat.Self.Feasible != table.shouldBeFeas {
-			t.Errorf("Error in Evaluate(), Feasible was %t, should be %t", heartbeat.Self.Feasible, table.shouldBeFeas)
+		if Self.Feasible != table.shouldBeFeas {
+			t.Errorf("Error in Evaluate(), Feasible was %t, should be %t", Self.Feasible, table.shouldBeFeas)
 		}
 	}
 }
