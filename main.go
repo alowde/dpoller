@@ -15,7 +15,7 @@ import (
 	"github.com/alowde/dpoller/pkg/flags"
 	"github.com/alowde/dpoller/publish"
 	"github.com/alowde/dpoller/url"
-	"github.com/alowde/dpoller/url/urltest"
+	"github.com/alowde/dpoller/url/check"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -23,7 +23,7 @@ import (
 var routineStatus map[string]chan error
 var heartbeatResult chan error
 
-var schan chan urltest.Status // schan passes individual status messages from listeners and test to consensus evaluation
+var schan chan check.Status   // schan passes individual status messages from listeners and test to consensus evaluation
 var hchan chan heartbeat.Beat // hchan passes heartbeats from listeners and heartbeat to coordinator
 
 var log *logrus.Entry

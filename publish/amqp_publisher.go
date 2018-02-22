@@ -6,13 +6,13 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
-	"github.com/alowde/dpoller/url/urltest"
+	"github.com/alowde/dpoller/url/check"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"time"
 )
 
-var schan chan urltest.Status // channel for internally publishing url statuses
+var schan chan check.Status   // channel for internally publishing url statuses
 var hchan chan heartbeat.Beat // channel for internally publishing heartbeats
 var log *logrus.Entry
 
@@ -109,7 +109,7 @@ func newBroker(config []byte) (*broker, error) {
 var brokerInstance *broker
 
 // Init turns the provided config []byte into a validated amqpBroker and connects
-func Init(config []byte, h chan heartbeat.Beat, s chan urltest.Status, ll logrus.Level) (err error) {
+func Init(config []byte, h chan heartbeat.Beat, s chan check.Status, ll logrus.Level) (err error) {
 	schan = s
 	hchan = h
 
@@ -137,7 +137,7 @@ func Publish(i interface{}, deadline <-chan time.Time) error {
 		log.Debug("publishing a heartbeat")
 		msgtype = "heartbeat"
 		hchan <- v
-	case urltest.Status:
+	case check.Status:
 		log.Debug("publishing a status")
 		msgtype = "status"
 		schan <- v

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/logger"
-	"github.com/alowde/dpoller/url/urltest"
+	"github.com/alowde/dpoller/url/check"
 	"github.com/pkg/errors"
 )
 

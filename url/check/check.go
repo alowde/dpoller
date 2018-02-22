@@ -1,4 +1,4 @@
-package urltest
+package check
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ var client = &http.Client{
 	Transport: transport,
 }
 
-type Test struct {
+type Check struct {
 	URL           string   `json:"url"`
 	Name          string   `json:"name"`
 	OkStatus      []int    `json:"ok-statuses"`
@@ -30,7 +30,7 @@ type Test struct {
 }
 
 // run runs a single URL test
-func (t Test) run() (s Status) {
+func (t Check) run() (s Status) {
 	time_start := time.Now()
 	resp, err := client.Get(t.URL)
 	s = Status{
@@ -52,7 +52,7 @@ func (t Test) run() (s Status) {
 
 // RunAsync runs a single URL test asynchronously and returns a result on the
 // provided channel
-func (t Test) RunAsync(c chan Status) {
+func (t Check) RunAsync(c chan Status) {
 	go func(chan Status) {
 		defer close(c)
 		timeStart := time.Now()
@@ -75,11 +75,11 @@ func (t Test) RunAsync(c chan Status) {
 	}(c)
 }
 
-type Tests []Test
+type Checks []Check
 
 // Run exposes the testing functionality for an array of URL tests, allowing
 // them to be conducted simultaneously
-func (t Tests) Run() (s Statuses) {
+func (t Checks) Run() (s Statuses) {
 	testCount := len(t)
 	results := make(chan Status, testCount)
 	for i, v := range t {

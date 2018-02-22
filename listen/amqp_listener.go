@@ -6,7 +6,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
-	"github.com/alowde/dpoller/url/urltest"
+	"github.com/alowde/dpoller/url/check"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"time"
@@ -84,7 +84,7 @@ func (b *broker) connect() error {
 }
 
 // listen ensures the connection is live and sets up a parsing routine
-func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status) error {
+func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan check.Status) error {
 	for {
 		select {
 		case <-b.closed:
@@ -156,7 +156,7 @@ var brokerInstance *broker
 
 // Init turns the provided config []byte into a validated amqpBroker, generates the listen
 // channels and calls listen to spawn a parser for the incoming messages.
-func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status, err error) {
+func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbeat.Beat, schan chan check.Status, err error) {
 
 	log = logger.New("amqpListen", ll)
 
@@ -172,7 +172,7 @@ func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbe
 
 	result = make(chan error, 10)
 	hchan = make(chan heartbeat.Beat)
-	schan = make(chan urltest.Status)
+	schan = make(chan check.Status)
 
 	if err := brokerInstance.listen(result, hchan, schan); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error while calling listen function")
@@ -181,7 +181,7 @@ func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbe
 	return result, hchan, schan, nil
 }
 
-func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan urltest.Status) {
+func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan check.Status) {
 	for {
 		heartbeatTimer := time.After(15 * time.Second)
 	loop:
@@ -194,7 +194,7 @@ func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan
 				message.Ack(true)
 				switch message.Type {
 				case "status":
-					var s urltest.Status
+					var s check.Status
 					if err := json.Unmarshal(message.Body, &s); err != nil {
 						log.WithFields(logrus.Fields{
 							"error":    err,

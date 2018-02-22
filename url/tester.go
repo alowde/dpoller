@@ -6,7 +6,7 @@ import (
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/publish"
-	"github.com/alowde/dpoller/url/urltest"
+	"github.com/alowde/dpoller/url/check"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -14,18 +14,18 @@ import (
 var log *logrus.Entry
 
 type testRun struct {
-	urltest.Test
+	check.Check
 	lastRan time.Time
-	result  chan urltest.Status
+	result  chan check.Status
 }
 
 func (tr *testRun) run() {
 	tr.lastRan = time.Now()
-	tr.result = make(chan urltest.Status)
-	tr.Test.RunAsync(tr.result)
+	tr.result = make(chan check.Status)
+	tr.Check.RunAsync(tr.result)
 }
 
-var Tests urltest.Tests
+var Tests check.Checks
 
 func Init(config []byte, ll logrus.Level) (routineStatus chan error, err error) {
 
@@ -52,7 +52,7 @@ func runTests(routineStatus chan error) {
 		minWait := time.After(12 * time.Second)
 		for j := 0 + i; j < len(Tests); j += 5 {
 			tr := testRun{
-				Test: urltest.Test{
+				Check: check.Check{
 					URL:           Tests[j].URL,
 					Name:          Tests[j].Name,
 					OkStatus:      Tests[j].OkStatus,

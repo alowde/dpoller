@@ -1,10 +1,12 @@
-package test
+package heartbeat
 
 import "testing"
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/alowde/dpoller/heartbeat"
+
 	"github.com/alowde/dpoller/node"
+
+	"github.com/alowde/dpoller/heartbeat"
 	"net"
 	"time"
 )
@@ -32,7 +34,7 @@ var node4 = node.Node{
 
 var testtime time.Time
 
-var beat1 = heartbeat.Beat{
+var beat1 = Self{
 	node1,
 	false,
 	false,
@@ -47,21 +49,21 @@ func init() {
 func TestEvaluate(t *testing.T) {
 
 	tables := []struct {
-		knownBeats    heartbeat.Beats
-		self          heartbeat.Beat
+		knownBeats    Beats
+		self          Self
 		shouldBeCoord bool
 		shouldBeFeas  bool
 	}{
 		// one node in initial state
-		{heartbeat.Beats{heartbeat.Beat{node1, false, false, testtime}}, beat1, false, true},
+		{Selfs{Self{node1, false, false, testtime}}, beat1, false, true},
 		// one node after one pass
-		{heartbeat.Beats{heartbeat.Beat{node1, false, true, testtime}}, heartbeat.Beat{node1, false, true, testtime}, true, false},
+		{Selfs{Self{node1, false, true, testtime}}, Self{node1, false, true, testtime}, true, false},
 		// two nodes feas, self loser
-		{heartbeat.Beats{heartbeat.Beat{node2, false, true, testtime}, heartbeat.Beat{node1, false, true, testtime}}, heartbeat.Beat{node1, false, true, testtime}, false, false},
+		{Selfs{Self{node2, false, true, testtime}, Self{node1, false, true, testtime}}, Self{node1, false, true, testtime}, false, false},
 		// two nodes feas, self winner
-		{heartbeat.Beats{heartbeat.Beat{node2, false, true, testtime}, heartbeat.Beat{node1, false, true, testtime}}, heartbeat.Beat{node2, false, true, testtime}, true, false},
+		{Selfs{Self{node2, false, true, testtime}, Self{node1, false, true, testtime}}, Self{node2, false, true, testtime}, true, false},
 		// one coord, one feas, self feasible
-		{heartbeat.Beats{heartbeat.Beat{node2, false, true, testtime}, heartbeat.Beat{node1, true, false, testtime}}, heartbeat.Beat{node2, false, true, testtime}, false, true},
+		{Selfs{Self{node2, false, true, testtime}, Self{node1, true, false, testtime}}, Self{node2, false, true, testtime}, false, true},
 	}
 
 	for _, table := range tables {

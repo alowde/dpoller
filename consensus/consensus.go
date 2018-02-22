@@ -1,17 +1,18 @@
 package consensus
 
 import (
+	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
-	"github.com/alowde/dpoller/url/urltest"
+	"github.com/alowde/dpoller/url/check"
 	"time"
 )
 
 var log *logrus.Entry
 
-func Init(in chan urltest.Status, ll logrus.Level) (routineStatus chan error, err error) {
+func Init(in chan check.Status, ll logrus.Level) (routineStatus chan error, err error) {
 
 	log = logger.New("consensus", ll)
 
@@ -21,9 +22,9 @@ func Init(in chan urltest.Status, ll logrus.Level) (routineStatus chan error, er
 	return routineStatus, nil
 }
 
-func checkConsensus(in chan urltest.Status, routineStatus chan error) {
+func checkConsensus(in chan check.Status, routineStatus chan error) {
 	for {
-		var urlStatuses urltest.Statuses
+		var urlStatuses check.Statuses
 		interval := time.After(60 * time.Second)
 	timer:
 		for {
