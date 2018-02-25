@@ -18,11 +18,14 @@ type configSkeleton struct {
 	ConfigURL string           `json:"config-url"`
 }
 
+// Unparsed holds the collection of raw JSON that are subsequently parsed by other modules.
 var Unparsed configSkeleton
 
 var log *logrus.Entry
 
-func Load(ll logrus.Level) error {
+// Initialise wraps the two config initialisation methods, static config from a local file and dynamic config from an
+// HTTP server.
+func Initialise(ll logrus.Level) error {
 
 	log = logger.New("config", ll)
 

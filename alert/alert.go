@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Contact describes a generic alertable endpoint, and can be extended to include any alert mechanism.
 type Contact interface {
 	SendAlert() error
 	GetName() string
@@ -19,9 +20,14 @@ type contactParseFunction func(message json.RawMessage) (contact Contact, err er
 var configParseFunctions = make(map[string]configParseFunction)
 var contactParseFunctions = make(map[string]contactParseFunction)
 
+// RegisterConfigFunction is called as a side-effect of importing an alert mechanism. It accepts a lambda that will have
+// all related configuration passed to it.
 func RegisterConfigFunction(name string, f configParseFunction) {
 	configParseFunctions[name] = f
 }
+
+// RegisterContactFunction is called as a side-effect of importing an alert mechanism. It accepts a lambda that will be
+// supplied with the details of each known contact.
 func RegisterContactFunction(name string, f contactParseFunction) {
 	contactParseFunctions[name] = f
 }
@@ -29,7 +35,8 @@ func RegisterContactFunction(name string, f contactParseFunction) {
 var contacts []Contact
 var log *logrus.Entry
 
-func Init(contactJson json.RawMessage, alertJson json.RawMessage, ll logrus.Level) error {
+// Initialise parses the provided routine configuration.
+func Initialise(contactJson json.RawMessage, alertJson json.RawMessage, ll logrus.Level) error {
 
 	log = logger.New("alert", ll)
 
@@ -66,6 +73,7 @@ func Init(contactJson json.RawMessage, alertJson json.RawMessage, ll logrus.Leve
 	return nil
 }
 
+// ProcessAlerts iterates over a slice of Status and sends alerts to each contact.
 func ProcessAlerts(urls check.Statuses) error {
 	for _, u := range urls {
 		for _, uc := range u.Url.Contacts {

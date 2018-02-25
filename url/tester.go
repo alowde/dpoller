@@ -13,30 +13,31 @@ import (
 
 var log *logrus.Entry
 
-type testRun struct {
+type checkRun struct {
 	check.Check
 	lastRan time.Time
 	result  chan check.Status
 }
 
-func (tr *testRun) run() {
+func (tr *checkRun) run() {
 	tr.lastRan = time.Now()
 	tr.result = make(chan check.Status)
 	tr.Check.RunAsync(tr.result)
 }
 
-var Tests check.Checks
+var Checks check.Checks
 
-func Init(config []byte, ll logrus.Level) (routineStatus chan error, err error) {
+// Initialise configures this module and returns a status channel for monitoring.
+func Initialise(config []byte, ll logrus.Level) (routineStatus chan error, err error) {
 
 	log = logger.New("url", ll)
 
-	if err = json.Unmarshal(config, &Tests); err != nil {
+	if err = json.Unmarshal(config, &Checks); err != nil {
 		return nil, errors.Wrap(err, "unable to parse URL config")
 	}
 
 	if log.Level == logrus.DebugLevel {
-		for _, v := range Tests {
+		for _, v := range Checks {
 			log.WithField("routine", "test").Debug(v)
 		}
 	}
@@ -46,19 +47,19 @@ func Init(config []byte, ll logrus.Level) (routineStatus chan error, err error) 
 }
 
 func runTests(routineStatus chan error) {
-	var runList []testRun
+	var runList []checkRun
 	// Spread initial test runs over a minute to avoid a thundering herd.
 	for i := 0; i < 5; i++ {
 		minWait := time.After(12 * time.Second)
-		for j := 0 + i; j < len(Tests); j += 5 {
-			tr := testRun{
+		for j := 0 + i; j < len(Checks); j += 5 {
+			tr := checkRun{
 				Check: check.Check{
-					URL:           Tests[j].URL,
-					Name:          Tests[j].Name,
-					OkStatus:      Tests[j].OkStatus,
-					AlertInterval: Tests[j].AlertInterval,
-					TestInterval:  Tests[j].TestInterval,
-					Contacts:      Tests[j].Contacts,
+					URL:           Checks[j].URL,
+					Name:          Checks[j].Name,
+					OkStatus:      Checks[j].OkStatus,
+					AlertInterval: Checks[j].AlertInterval,
+					TestInterval:  Checks[j].TestInterval,
+					Contacts:      Checks[j].Contacts,
 				},
 			}
 			tr.run()

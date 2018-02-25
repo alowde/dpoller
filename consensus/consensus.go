@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/heartbeat"
@@ -12,7 +11,8 @@ import (
 
 var log *logrus.Entry
 
-func Init(in chan check.Status, ll logrus.Level) (routineStatus chan error, err error) {
+// Initialise starts the consensus-checking routine and returns a status channel.
+func Initialise(in chan check.Status, ll logrus.Level) (routineStatus chan error, err error) {
 
 	log = logger.New("consensus", ll)
 

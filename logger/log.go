@@ -6,6 +6,7 @@ import (
 	"github.com/mattn/go-colorable"
 )
 
+// New returns a *logrus.Entry initialised with a few standard settings.
 func New(routine string, level logrus.Level) *logrus.Entry {
 	var log = &logrus.Logger{
 		Out:       colorable.NewColorableStdout(),

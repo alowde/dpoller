@@ -39,7 +39,7 @@ func (c Config) validate() error {
 	return nil
 }
 
-// broker contains all of the information required to connect to an AMQP broker
+// broker contains all of the information required to connect to an AMQP broker.
 type broker struct {
 	Config                      // broker configuration
 	connection *amqp.Connection // broker connection object
@@ -47,7 +47,7 @@ type broker struct {
 	closed     chan *amqp.Error // connection closed flag
 }
 
-// connect establises connection for AMQP broker
+// connect establises connection for AMQP broker.
 func (b *broker) connect() error {
 	var err error
 	uri := fmt.Sprintf(
@@ -89,7 +89,7 @@ func (b *broker) connect() error {
 }
 
 // newBroker attempts to load and parse a given AMQP config filename and
-// returns a resulting Broker object
+// returns a resulting Broker object.
 func newBroker(config []byte) (*broker, error) {
 	var raw = []byte(config)
 	var b broker
@@ -108,8 +108,8 @@ func newBroker(config []byte) (*broker, error) {
 
 var brokerInstance *broker
 
-// Init turns the provided config []byte into a validated amqpBroker and connects
-func Init(config []byte, h chan heartbeat.Beat, s chan check.Status, ll logrus.Level) (err error) {
+// Initialise turns the provided config []byte into a validated amqpBroker and connects.
+func Initialise(config []byte, h chan heartbeat.Beat, s chan check.Status, ll logrus.Level) (err error) {
 	schan = s
 	hchan = h
 

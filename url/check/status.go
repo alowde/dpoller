@@ -4,6 +4,7 @@ import (
 	"github.com/alowde/dpoller/node"
 )
 
+// Status is the result of a single Check.
 type Status struct {
 	Node       node.Node
 	Url        Check  // the URL that was tested
@@ -13,10 +14,19 @@ type Status struct {
 	Timestamp  int    // timestamp at which this status was recorded
 }
 
-// Statuses is an array of Status
+// Statuses is an array of Status.
 type Statuses []Status
 
-// Dedupe returns a Statuses containing only the most recent node-url result tuples
+// Result is the aggregation of statuses from one URL, particularly useful for alerting.
+type Result struct {
+	url             Check // the URL that was checked
+	averageResponse int   // average number of milliseconds taken to complete the request
+	statusCodes     []int // unique status codes that were seen from this URL
+	failed          int   // number of checks that failed
+	passed          int   // number of checks that passed
+}
+
+// Dedupe returns a Statuses containing only the most recent node-url result tuples.
 func (s Statuses) Dedupe() (r Statuses) {
 	type tup struct {
 		nodeId int64
@@ -41,7 +51,7 @@ func (s Statuses) Dedupe() (r Statuses) {
 	return r
 }
 
-// GetFailed returns a Statuses containing only test statuses that didn't receive an Ok response
+// GetFailed returns a Statuses containing only test statuses that didn't receive an Ok response.
 func (s Statuses) GetFailed() (r Statuses) {
 
 next:

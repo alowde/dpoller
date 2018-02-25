@@ -14,6 +14,7 @@ import (
 
 var log *logrus.Entry
 
+// Config contains all data used to connect to an AMQP broker.
 type Config struct {
 	Host     string `json:"host"`
 	User     string `json:"user"`
@@ -37,7 +38,7 @@ func (c Config) validate() error {
 	return nil
 }
 
-// broker contains all of the information required to connect to an AMQP broker
+// broker is an active instance of an AMQP broker connection.
 type broker struct {
 	Config                      // broker configuration
 	connection *amqp.Connection // broker connection object
@@ -45,7 +46,7 @@ type broker struct {
 	closed     chan *amqp.Error // connection closed flag
 }
 
-// connect establises connection for AMQP broker
+// connect establises connection for AMQP broker.
 func (b *broker) connect() error {
 	var err error
 	uri := fmt.Sprintf(
@@ -83,7 +84,7 @@ func (b *broker) connect() error {
 	return nil
 }
 
-// listen ensures the connection is live and sets up a parsing routine
+// listen ensures the connection is live and sets up a parsing routine.
 func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan check.Status) error {
 	for {
 		select {
@@ -135,7 +136,7 @@ func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan
 }
 
 // newBroker attempts to load and parse a given AMQP config filename and
-// returns a resulting Broker object
+// returns a resulting Broker object.
 func newBroker(config []byte) (*broker, error) {
 	var raw = []byte(config)
 	var b broker
@@ -154,9 +155,9 @@ func newBroker(config []byte) (*broker, error) {
 
 var brokerInstance *broker
 
-// Init turns the provided config []byte into a validated amqpBroker, generates the listen
+// Initialise turns the provided config []byte into a validated amqpBroker, generates the listen
 // channels and calls listen to spawn a parser for the incoming messages.
-func Init(config []byte, ll logrus.Level) (result chan error, hchan chan heartbeat.Beat, schan chan check.Status, err error) {
+func Initialise(config []byte, ll logrus.Level) (result chan error, hchan chan heartbeat.Beat, schan chan check.Status, err error) {
 
 	log = logger.New("amqpListen", ll)
 

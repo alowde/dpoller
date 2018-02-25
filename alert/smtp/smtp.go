@@ -9,6 +9,7 @@ import (
 	"net/smtp"
 )
 
+// Config describes an SMTP relay host, used for sending alerts.
 var Config struct {
 	Server   string `json:"server"`
 	Port     string `json:"port"`
@@ -36,6 +37,7 @@ func (c smtpContact) SendAlert() error {
 	return err
 }
 
+// GetName satisfies half of the alert.Contact interface and exposes the contact name.
 func (c smtpContact) GetName() string {
 	return c.Name
 }
@@ -53,7 +55,7 @@ func initialise(message json.RawMessage, ll logrus.Level) error {
 
 func parseContact(message json.RawMessage) (contact alert.Contact, err error) {
 	var S smtpContact
-	if err := json.Unmarshal(message, &S); err != nil {
+	if err := json.Unmarshal(message, &S); err != nil { // TODO: sanity check returned config
 		return nil, err
 	}
 	return S, nil

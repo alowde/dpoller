@@ -11,16 +11,19 @@ import (
 	"time"
 )
 
+// Node is an instance of the dpoller application.
 type Node struct {
 	ID   int64
 	EIP  net.IP
 	Name string
 }
 
+// Self is the current running node.
 var Self Node
 
 var log *logrus.Entry
 
+// Initialise configures the Self node using STUN to attempt to determine the external IP address.
 func Initialise(l logrus.Level) error {
 
 	var logger = logrus.New()

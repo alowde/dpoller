@@ -39,7 +39,7 @@ var beat1 = Beat{
 }
 
 func init() {
-	Init(logrus.FatalLevel)
+	Initialise(logrus.FatalLevel)
 	testtime, _ = time.Parse("20060102 150405", "20380119 031408") // bonus test
 }
 

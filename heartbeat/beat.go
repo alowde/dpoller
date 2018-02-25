@@ -11,7 +11,8 @@ import (
 
 var log *logrus.Entry
 
-func Init(ll logrus.Level) {
+// Initialise configures the logging level for the heartbeat module
+func Initialise(ll logrus.Level) {
 
 	log = logger.New("heartbeat", ll)
 }

@@ -45,30 +45,30 @@ func initialise() error {
 
 	var err error
 
-	if err := config.Load(flags.ConfLog.Level); err != nil {
+	if err := config.Initialise(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not load config")
 	}
 	if err := node.Initialise(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise node data")
 	}
-	heartbeat.Init(flags.BeatLog.Level)
-	if routineStatus["listen"], hchan, schan, err = listen.Init(*config.Unparsed.Listen, flags.ListenLog.Level); err == nil {
-		if routineStatus["coordinate"], err = coordinate.Init(hchan, flags.CoordLog.Level); err != nil {
+	heartbeat.Initialise(flags.BeatLog.Level)
+	if routineStatus["listen"], hchan, schan, err = listen.Initialise(*config.Unparsed.Listen, flags.ListenLog.Level); err == nil {
+		if routineStatus["coordinate"], err = coordinate.Initialise(hchan, flags.CoordLog.Level); err != nil {
 			return errors.Wrap(err, "could not initialise coordinator routine")
 		}
-		if routineStatus["consensus"], err = consensus.Init(schan, flags.ConsensusLog.Level); err != nil {
+		if routineStatus["consensus"], err = consensus.Initialise(schan, flags.ConsensusLog.Level); err != nil {
 			return errors.Wrap(err, "could not initialise consensus monitoring routine")
 		}
 	} else {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
-	if err := publish.Init(*config.Unparsed.Publish, hchan, schan, flags.PubLog.Level); err != nil {
+	if err := publish.Initialise(*config.Unparsed.Publish, hchan, schan, flags.PubLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise publish functions")
 	}
-	if routineStatus["url"], err = url.Init(*config.Unparsed.Tests, flags.UrlLog.Level); err != nil {
+	if routineStatus["url"], err = url.Initialise(*config.Unparsed.Tests, flags.UrlLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
-	if err := alert.Init(*config.Unparsed.Contacts, *config.Unparsed.Alert, flags.AlertLog.Level); err != nil {
+	if err := alert.Initialise(*config.Unparsed.Contacts, *config.Unparsed.Alert, flags.AlertLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise alert function")
 	}
 	return nil

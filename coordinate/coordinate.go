@@ -11,7 +11,8 @@ var knownBeats heartbeat.BeatMap
 
 var log *logrus.Entry
 
-func Init(in chan heartbeat.Beat, ll logrus.Level) (statusReport chan error, err error) {
+// Initialise starts the consensus-checking routine and returns a status channel.
+func Initialise(in chan heartbeat.Beat, ll logrus.Level) (statusReport chan error, err error) {
 
 	log = logger.New("coordinate", ll)
 
@@ -22,7 +23,7 @@ func Init(in chan heartbeat.Beat, ll logrus.Level) (statusReport chan error, err
 	return statusReport, nil
 }
 
-// updateKnownBeats receives heartbeats from the listener and stores the most recent per-node in the knownBeats map
+// updateKnownBeats receives heartbeats from the listener and stores the most recent per-node in the knownBeats map.
 func updateKnownBeats(in chan heartbeat.Beat, statusReport chan error) {
 
 timer:

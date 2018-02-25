@@ -20,6 +20,8 @@ var client = &http.Client{
 	Transport: transport,
 }
 
+// Check defines the configuration for a single URL to be checked together with its pass/fail conditions and alerting
+// information.
 type Check struct {
 	URL           string   `json:"url"`
 	Name          string   `json:"name"`
@@ -29,7 +31,7 @@ type Check struct {
 	Contacts      []string `json:"contacts"`
 }
 
-// run runs a single URL test
+// run runs a single URL test.
 func (t Check) run() (s Status) {
 	time_start := time.Now()
 	resp, err := client.Get(t.URL)
@@ -51,7 +53,7 @@ func (t Check) run() (s Status) {
 }
 
 // RunAsync runs a single URL test asynchronously and returns a result on the
-// provided channel
+// provided channel.
 func (t Check) RunAsync(c chan Status) {
 	go func(chan Status) {
 		defer close(c)
@@ -78,7 +80,7 @@ func (t Check) RunAsync(c chan Status) {
 type Checks []Check
 
 // Run exposes the testing functionality for an array of URL tests, allowing
-// them to be conducted simultaneously
+// them to be conducted simultaneously.
 func (t Checks) Run() (s Statuses) {
 	testCount := len(t)
 	results := make(chan Status, testCount)
