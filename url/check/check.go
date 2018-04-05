@@ -3,6 +3,7 @@ package check
 import (
 	"fmt"
 	//log "github.com/Sirupsen/logrus"
+	"errors"
 	"github.com/alowde/dpoller/node"
 	"net"
 	"net/http"
@@ -23,12 +24,13 @@ var client = &http.Client{
 // Check defines the configuration for a single URL to be checked together with its pass/fail conditions and alerting
 // information.
 type Check struct {
-	URL           string   `json:"url"`
-	Name          string   `json:"name"`
-	OkStatus      []int    `json:"ok-statuses"`
-	AlertInterval int      `json:"alert-interval"`
-	TestInterval  int      `json:"test-interval"`
-	Contacts      []string `json:"contacts"`
+	URL            string   `json:"url"`
+	Name           string   `json:"name"`
+	OkStatus       []int    `json:"ok-statuses"`
+	AlertThreshold int8     `json:"alert-below"`
+	AlertInterval  int      `json:"alert-interval"`
+	TestInterval   int      `json:"test-interval"`
+	Contacts       []string `json:"contacts"`
 }
 
 // run runs a single URL test.
@@ -95,4 +97,13 @@ func (t Checks) Run() (s Statuses) {
 	}
 	fmt.Println("returning results")
 	return s
+}
+
+func (c *Checks) ByName(name string) (result Check, err error) {
+	for _, v := range *c {
+		if v.Name == name {
+			return v, nil
+		}
+	}
+	return Check{}, errors.New("name not found")
 }

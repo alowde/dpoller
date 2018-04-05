@@ -5,6 +5,7 @@ import (
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
+	"github.com/alowde/dpoller/url"
 	"github.com/alowde/dpoller/url/check"
 	"time"
 )
@@ -26,20 +27,30 @@ func checkConsensus(in chan check.Status, routineStatus chan error) {
 	for {
 		var urlStatuses check.Statuses
 		interval := time.After(60 * time.Second)
-	timer:
+	collectLoop:
 		for {
 			select {
 			case <-interval:
 				if heartbeat.Self.Coordinator { // Only the coordinator checks URL statuses
-					log.Debug("Checking consensus")
-					deduped := urlStatuses.Dedupe()
-					if len(deduped.GetFailed()) > 0 {
-						log.WithField("failed count", len(deduped.GetFailed())).Info("Found failed url status")
+					dd := urlStatuses.Dedupe()
+					statusSet := dd.PerCheckName() // Dedupe and group status check results by name
+					log.WithField("status count", len(statusSet)).
+						Info("checking consensus")
+					for n, statuses := range statusSet { // Calculate the aggregate statistics for each set of checks
+						if r, err := statuses.CalculateResult(); err == nil { // Ignore empty statussets
+							c, _ := url.Checks.ByName(n)          // Get an absolute copy of the check configuration
+							if r.PassPercent < c.AlertThreshold { // If the result PassPercent is lower than the configd
+								log.WithField("check name", c.Name).
+									WithField("alert threshold", r.PassPercent).
+									WithField("passed checks", r.PassPercent).
+									Debug("alerting on failed check")
+								alert.ProcessAlerts(c, r) // check threshold, send an alert
+							}
+						}
 					}
-					alert.ProcessAlerts(deduped.GetFailed())
 				}
 				routineStatus <- heartbeat.RoutineNormal{Timestamp: time.Now()}
-				break timer
+				break collectLoop
 			case s := <-in:
 				urlStatuses = append(urlStatuses, s)
 			}

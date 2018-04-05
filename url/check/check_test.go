@@ -15,11 +15,14 @@ var node1 = node.Node{
 	net.IP{10, 0, 0, 1},
 	"test_node_1",
 }
+
+/*
 var node2 = node.Node{
 	2000000000000000000,
 	net.IP{10, 0, 0, 2},
 	"test_node_2",
 }
+*/
 
 /*
 type Check struct {
@@ -42,6 +45,7 @@ var check1 = Check{
 	Contacts:      []string{"ops1", "ops2"},
 }
 
+/*
 // Valid url, should fail
 var check2 = Check{
 	URL:           "www.google.com",
@@ -60,6 +64,7 @@ var check3 = Check{
 	TestInterval:  10,
 	Contacts:      []string{"ops1", "ops2"},
 }
+*/
 
 /*
 type Status struct {
@@ -78,8 +83,7 @@ var status1 = Status{
 	Url:        check1,
 	Rtime:      20,
 	StatusCode: 200,
-	StatusTxt:  "OK",
-	Timestamp:  time1,
+	StatusTxt:  "status1",
 }
 
 // A 500 status from node1
@@ -89,27 +93,28 @@ var status2 = Status{
 	Rtime:      20,
 	StatusCode: 500,
 	StatusTxt:  "status2",
-	Timestamp:  time1,
 }
 
 func init() {
 	t, _ := time.Parse("20060102 150405", "20180101 010000")
 	time1 = int(t.Unix())
+	time2 = int(t.Add(1 * time.Second).Unix())
+
+	status1.Timestamp = time1
+	status2.Timestamp = time2
+
 }
 
-func TestGetFailed(t *testing.T) {
-
-	var f Statuses
-	var l int
-
-	testSetOne := Statuses{status1, status2}
-	f = testSetOne.GetFailed()
-	l = len(f)
-	if l != 1 {
-		t.Errorf("Error in GetFailed(), expected one failed test, got %v", l)
-	} else {
-		if f[0].StatusTxt != "status2" {
-			t.Errorf("Error in GetFailed(), expected status2, got %#v", f[0])
+func TestDedupe(t *testing.T) {
+	ts1 := Statuses{status1, status2}
+	tsr1 := ts1.Dedupe()
+	t.Run("OneNode", func(t *testing.T) {
+		if len(tsr1) != 1 {
+			t.Errorf("Error in GetFailed(), expected one Failed test, got %v", len(tsr1))
+		} else {
+			if tsr1[0].StatusTxt != "status2" {
+				t.Errorf("Error in GetFailed(), expected status2, got %#v", tsr1[0])
+			}
 		}
-	}
+	})
 }

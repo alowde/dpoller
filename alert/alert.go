@@ -10,7 +10,7 @@ import (
 
 // Contact describes a generic alertable endpoint, and can be extended to include any alert mechanism.
 type Contact interface {
-	SendAlert() error
+	SendAlert(check check.Check, result check.Result) error
 	GetName() string
 }
 
@@ -73,15 +73,13 @@ func Initialise(contactJson json.RawMessage, alertJson json.RawMessage, ll logru
 	return nil
 }
 
-// ProcessAlerts iterates over a slice of Status and sends alerts to each contact.
-func ProcessAlerts(urls check.Statuses) error {
-	for _, u := range urls {
-		for _, uc := range u.Url.Contacts {
-			for _, c := range contacts {
-				if uc == c.GetName() {
-					if err := c.SendAlert(); err != nil {
-						log.WithField("error", err).Warn("Couldn't send alert message")
-					}
+// ProcessAlerts iterates over a set of results and sends alerts to each contact.
+func ProcessAlerts(c check.Check, r check.Result) error {
+	for _, uc := range c.Contacts { // For each contact in the check config
+		for _, contact := range contacts { // If we have a matching contact name
+			if uc == contact.GetName() {
+				if err := contact.SendAlert(c, r); err != nil { // Attempt to send an alert
+					log.WithField("error", err).Warn("Couldn't send alert message")
 				}
 			}
 		}

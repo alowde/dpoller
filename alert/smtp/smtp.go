@@ -6,6 +6,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
 	"github.com/alowde/dpoller/logger"
+	"github.com/alowde/dpoller/url/check"
 	"net/smtp"
 )
 
@@ -24,11 +25,15 @@ type smtpContact struct {
 	Email string `json:"email"`
 }
 
-func (c smtpContact) SendAlert() error {
+// SendAlert satisfies half of the alert.Contact interface and allows this contact to be alerted.
+func (c smtpContact) SendAlert(check check.Check, result check.Result) error {
 	smsg := fmt.Sprintf("To: %v\r\n"+
-		"Subject: Alert from dpoller\r\n\r\n"+
-		"An alert occurred",
-		c.Email)
+		"Subject: Alert from dpoller: %v failed %v of %v checks\r\n\r\n"+
+		"Dpoller reports that %v of %v checks failed when testing %v at %v\r\n"+
+		"IP Addresses reporting fail: %v",
+		c.Email, check.Name, result.Failed, result.Total,
+		result.Failed, result.Total, check.Name, check.URL,
+		result.FailNodeIPs)
 	to := []string{c.Email}
 	msg := []byte(smsg)
 	auth := smtp.PlainAuth("", Config.Username, Config.Password, Config.Server)
