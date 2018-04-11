@@ -5,7 +5,8 @@ import (
 	"time"
 )
 
-// RoutineNormal heartbeats are sent internally to indicate normal status.
+// RoutineNormal heartbeats are sent internally to indicate normal status. It satisfies the error interface so we can
+// send either a wrapped error or no-error as required.
 type RoutineNormal struct {
 	origin    string
 	Timestamp time.Time
