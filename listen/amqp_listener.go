@@ -1,5 +1,7 @@
 package listen
 
+// TODO: refactor this as a subpackage using import side-effects for easier addition of new listeners
+
 import (
 	"encoding/json"
 	"fmt"

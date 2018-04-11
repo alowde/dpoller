@@ -1,3 +1,5 @@
+// Package config receives and processes the root-level configuration and allocates configuration sections to other
+// packages.
 package config
 
 import (

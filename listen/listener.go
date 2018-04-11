@@ -1,3 +1,7 @@
+// Package listen provides a generic interface for receiving check results and heartbeat messages from other nodes.
+// It's expected that a listener will receive from all other nodes, though it may not connect to every one.
+// Listeners are one of four routines that must send a heartbeat for the node to be considered healthy. This allows for
+// broker/external connectivity checks to be easily incorporated into the node's self-check process.
 package listen
 
 import (

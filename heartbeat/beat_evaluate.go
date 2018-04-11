@@ -1,5 +1,9 @@
 package heartbeat
 
+import "github.com/alowde/dpoller/node"
+
+// TODO: refactor these routines to have no knowledge of the node's state
+
 // Evaluate assesses the set of known nodes to determine which node has/should have the Coordinator role
 func (beats Beats) Evaluate() {
 	if beats.CoordCount() == 0 {

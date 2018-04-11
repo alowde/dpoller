@@ -1,3 +1,5 @@
+// Package publish provides a generic interface for sending check result and heartbeat messages to other nodes.
+// It's expected that a publisher will publish to all other nodes, though it may not connect to every one.
 package publish
 
 import (

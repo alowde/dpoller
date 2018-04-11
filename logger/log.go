@@ -1,3 +1,4 @@
+// Package logger allows us to set any application-wide log settings.
 package logger
 
 import (

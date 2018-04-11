@@ -1,5 +1,7 @@
 package publish
 
+// TODO: refactor this as a subpackage using import side-effects for easier addition of new publishers
+
 import (
 	"encoding/json"
 	"fmt"

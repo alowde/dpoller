@@ -1,3 +1,7 @@
+// Package coordinate contains the coordinate routine that's responsible for electing a Coordinator and Feasible
+// Coordinator node. Normally the node generates a heartbeat every 30 seconds, but the C and FC nodes generate a
+// heartbeat every five seconds to reduce downtime.
+// Coordinate is one of four routines that must send a heartbeat for the node to be considered healthy.
 package coordinate
 
 import (

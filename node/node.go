@@ -1,3 +1,4 @@
+// Package node provides the Node type and holds the current node's unique identifying information.
 package node
 
 import (
@@ -23,7 +24,9 @@ var Self Node
 
 var log *logrus.Entry
 
-// Initialise configures the Self node using STUN to attempt to determine the external IP address.
+// Initialise sets this node's unique details: ID from the PRNG, external IP (EIP) from STUN
+// 63-bit random UID isn't ideal, but probability of collision is around  2.1e-15 for a 200-node cluster, which
+// should be more than sufficient.
 func Initialise(l logrus.Level) error {
 
 	var logger = logrus.New()

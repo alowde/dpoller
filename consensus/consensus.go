@@ -1,3 +1,6 @@
+// Package consensus contains the consensus routine that's responsible for determining whether enough nodes report
+// failure to send an alert. It runs continuously but only acts when the node is acting as a coordinator.
+// Consensus is one of four routines that must send a heartbeat for the node to be considered healthy.
 package consensus
 
 import (
@@ -44,7 +47,7 @@ func checkConsensus(in chan check.Status, routineStatus chan error) {
 									WithField("alert threshold", r.PassPercent).
 									WithField("passed checks", r.PassPercent).
 									Debug("alerting on failed check")
-								alert.ProcessAlerts(c, r) // check threshold, send an alert
+								alert.Send(c, r) // check threshold, send an alert
 							}
 						}
 					}

@@ -1,9 +1,10 @@
+// Package check defines the core URL-check configuration structures and associated functions. It includes both the
+// configuration and result structures.
 package check
 
 import (
-	"fmt"
-	//log "github.com/Sirupsen/logrus"
 	"errors"
+	"fmt"
 	"github.com/alowde/dpoller/node"
 	"net"
 	"net/http"
