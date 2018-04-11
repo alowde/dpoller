@@ -1,24 +1,17 @@
+// Package alert provides a generic interface for sending alerts to contacts. It allows us to easily write new alert
+// methods without modifying the rest of the program.
 package alert
 
 import (
 	"encoding/json"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/logger"
-	"github.com/alowde/dpoller/url/check"
 	"github.com/pkg/errors"
 )
 
-// Contact describes a generic alertable endpoint, and can be extended to include any alert mechanism.
-type Contact interface {
-	SendAlert(check check.Check, result check.Result) error
-	GetName() string
-}
+var log *logrus.Entry
 
 type configParseFunction func(message json.RawMessage, ll logrus.Level) error
-type contactParseFunction func(message json.RawMessage) (contact Contact, err error)
-
-var configParseFunctions = make(map[string]configParseFunction)
-var contactParseFunctions = make(map[string]contactParseFunction)
 
 // RegisterConfigFunction is called as a side-effect of importing an alert mechanism. It accepts a lambda that will have
 // all related configuration passed to it.
@@ -26,14 +19,7 @@ func RegisterConfigFunction(name string, f configParseFunction) {
 	configParseFunctions[name] = f
 }
 
-// RegisterContactFunction is called as a side-effect of importing an alert mechanism. It accepts a lambda that will be
-// supplied with the details of each known contact.
-func RegisterContactFunction(name string, f contactParseFunction) {
-	contactParseFunctions[name] = f
-}
-
-var contacts []Contact
-var log *logrus.Entry
+var configParseFunctions = make(map[string]configParseFunction)
 
 // Initialise parses the provided routine configuration.
 func Initialise(contactJson json.RawMessage, alertJson json.RawMessage, ll logrus.Level) error {
@@ -70,19 +56,5 @@ func Initialise(contactJson json.RawMessage, alertJson json.RawMessage, ll logru
 		}
 	}
 	log.WithField("contact count", len(contacts)).Info("Finished parsing contacts")
-	return nil
-}
-
-// ProcessAlerts iterates over a set of results and sends alerts to each contact.
-func ProcessAlerts(c check.Check, r check.Result) error {
-	for _, uc := range c.Contacts { // For each contact in the check config
-		for _, contact := range contacts { // If we have a matching contact name
-			if uc == contact.GetName() {
-				if err := contact.SendAlert(c, r); err != nil { // Attempt to send an alert
-					log.WithField("error", err).Warn("Couldn't send alert message")
-				}
-			}
-		}
-	}
 	return nil
 }

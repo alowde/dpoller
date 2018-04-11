@@ -1,3 +1,5 @@
+// Package smtp implements the alert interface and sends alerts via email. It's normally imported with a blank
+// identifier and uses import side-effects to register with the alert package.
 package smtp
 
 import (
@@ -66,6 +68,7 @@ func parseContact(message json.RawMessage) (contact alert.Contact, err error) {
 	return S, nil
 }
 
+// The init function registers this packages callbacks when imported
 func init() {
 	alert.RegisterConfigFunction("smtp", initialise)
 	alert.RegisterContactFunction("smtp", parseContact)
