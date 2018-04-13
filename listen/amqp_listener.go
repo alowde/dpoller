@@ -60,7 +60,6 @@ func (b *broker) connect() error {
 		b.Port,
 	)
 	if b.connection, err = amqp.Dial(uri); err != nil {
-		fmt.Printf("%#v\n", uri)
 		return errors.Wrap(err, "could not connect to AMQP broker")
 	}
 

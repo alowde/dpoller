@@ -4,7 +4,6 @@ package check
 
 import (
 	"errors"
-	"fmt"
 	"github.com/alowde/dpoller/node"
 	"net"
 	"net/http"
@@ -96,7 +95,6 @@ func (t Checks) Run() (s Statuses) {
 	for i := 0; i < testCount; i++ {
 		s = append(s, <-results)
 	}
-	fmt.Println("returning results")
 	return s
 }
 
