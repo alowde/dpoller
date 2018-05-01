@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/alert"
@@ -10,10 +11,12 @@ import (
 	"github.com/alowde/dpoller/coordinate"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/listen"
+	_ "github.com/alowde/dpoller/listen/amqp"
 	"github.com/alowde/dpoller/logger"
 	"github.com/alowde/dpoller/node"
 	"github.com/alowde/dpoller/pkg/flags"
 	"github.com/alowde/dpoller/publish"
+	_ "github.com/alowde/dpoller/publish/amqp"
 	"github.com/alowde/dpoller/url"
 	"github.com/alowde/dpoller/url/check"
 	"github.com/pkg/errors"
@@ -45,28 +48,32 @@ func initialise() error {
 
 	var err error
 
+	// Retrieve configuration
 	if err := config.Initialise(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not load config")
 	}
 	if err := node.Initialise(flags.ConfLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise node data")
 	}
-	heartbeat.Initialise(flags.BeatLog.Level)
-	if routineStatus["listen"], hchan, schan, err = listen.Initialise(*config.Unparsed.Listen, flags.ListenLog.Level); err == nil {
-		if routineStatus["coordinate"], err = coordinate.Initialise(hchan, flags.CoordLog.Level); err != nil {
-			return errors.Wrap(err, "could not initialise coordinator routine")
-		}
-		if routineStatus["consensus"], err = consensus.Initialise(schan, flags.ConsensusLog.Level); err != nil {
-			return errors.Wrap(err, "could not initialise consensus monitoring routine")
-		}
-	} else {
+
+	// Provide config to listen, coordinate, consensus and url and set the watchdog channels
+	if routineStatus["listen"], hchan, schan, err = listen.Initialise(*config.Unparsed.Listen, flags.ListenLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
-	if err := publish.Initialise(*config.Unparsed.Publish, hchan, schan, flags.PubLog.Level); err != nil {
-		return errors.Wrap(err, "could not initialise publish functions")
+	if routineStatus["coordinate"], err = coordinate.Initialise(hchan, flags.CoordLog.Level); err != nil {
+		return errors.Wrap(err, "could not initialise coordinator routine")
+	}
+	if routineStatus["consensus"], err = consensus.Initialise(schan, flags.ConsensusLog.Level); err != nil {
+		return errors.Wrap(err, "could not initialise consensus monitoring routine")
 	}
 	if routineStatus["url"], err = url.Initialise(*config.Unparsed.Tests, flags.UrlLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise URL testing functions")
+	}
+
+	// Publish, heartbeat and alert provide only blocking methods and so don't need a watchdog
+	heartbeat.Initialise(flags.BeatLog.Level)
+	if err := publish.Initialise(*config.Unparsed.Publish, hchan, schan, flags.PubLog.Level); err != nil {
+		return errors.Wrap(err, "could not initialise publish functions")
 	}
 	if err := alert.Initialise(*config.Unparsed.Contacts, *config.Unparsed.Alert, flags.AlertLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise alert function")
@@ -76,7 +83,11 @@ func initialise() error {
 
 func main() {
 	if err := initialise(); err != nil {
-		log.Fatalf("%+v\n", err)
+		if flags.MainLog.Level == logrus.DebugLevel {
+			log.Fatalf("%+v\n", err)
+		}
+		log.WithError(err).
+			Fatal("Failed to initialise")
 	}
 	go checkHeartbeats(heartbeatResult, routineStatus)
 	log.Fatalf("End! got result %+v", <-heartbeatResult)
@@ -126,7 +137,9 @@ func checkHeartbeats(result chan error, statusChans map[string]chan error) {
 				return
 			}
 		}
-		if err := publish.Publish(heartbeat.NewBeat(), time.After(10*time.Second)); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := publish.Publish(ctx, heartbeat.NewBeat()); err != nil {
 			log.Warn("died due to can't publish")
 			result <- err
 			close(result)

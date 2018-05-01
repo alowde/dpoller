@@ -1,6 +1,7 @@
 package url
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
@@ -79,10 +80,12 @@ func runTests(routineStatus chan error) {
 			case result := <-tr.result:
 				// TODO: Implement async and batch publish methods and use one of those
 				log.WithField("url", tr.URL).Debug("Got a result")
-				if err := publish.Publish(result, time.After(10*time.Second)); err != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				if err := publish.Publish(ctx, result); err != nil {
 					// TODO: unwrap error and handle timeouts differently from other errors
 					log.WithField("error", err).Warn("failed to publish test result")
 				}
+				cancel()
 				log.WithField("url", tr.URL).Debug("Published a result")
 				if time.Now().Sub(tr.lastRan) > (60 * time.Second) {
 					runList[k].run()
