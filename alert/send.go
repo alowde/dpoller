@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var notBefore map[string]time.Time
+var notBefore = make(map[string]time.Time)
 
 // Send requests an alert for any configured contacts, passing on check & result information
 func Send(c check.Check, r check.Result) error {

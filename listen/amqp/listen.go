@@ -50,6 +50,7 @@ func (b *broker) connect() error {
 
 // listen ensures the connection is live and sets up a parsing routine.
 func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan check.Status) error {
+	// loop until either the broker connection is not closed or an attempt to open the connection fails
 	for {
 		select {
 		case <-b.closed:
@@ -94,8 +95,8 @@ func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan
 			}
 			// launch the actual parsing routine
 			go parseAmqpMessages(inbox, result, hchan, schan)
+			return nil
 		}
-		return nil
 	}
 }
 
@@ -109,7 +110,7 @@ func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan
 				result <- heartbeat.RoutineNormal{Timestamp: time.Now()}
 				continue loop
 			case message := <-inbox:
-				message.Ack(true)
+				_ = message.Ack(true) // If Ack fails it'll still be easier to deal with elsewhere.
 				switch message.Type {
 				case "status":
 					var s check.Status

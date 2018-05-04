@@ -2,6 +2,7 @@ package heartbeat
 
 import (
 	"fmt"
+	"github.com/alowde/dpoller/node"
 	"math"
 )
 

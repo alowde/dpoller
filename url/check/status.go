@@ -108,7 +108,7 @@ func uniqInt(in sort.IntSlice) (out []int) {
 	for i := 0; i+1 < len(in); i++ {
 		if in[i] == in[i+1] {
 			in = append(in[:i], in[i+1:]...)
-			i -= 1
+			i--
 		}
 	}
 	return in

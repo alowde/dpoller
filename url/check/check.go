@@ -4,7 +4,9 @@ package check
 
 import (
 	"errors"
+	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/node"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -21,6 +23,13 @@ var client = &http.Client{
 	Transport: transport,
 }
 
+func logClose(c io.Closer) {
+	if err := c.Close(); err != nil {
+		log.WithError(err).
+			Warn("Somehow failed to close a Closer")
+	}
+}
+
 // Check defines the configuration for a single URL to be checked together with its pass/fail conditions and alerting
 // information.
 type Check struct {
@@ -35,19 +44,19 @@ type Check struct {
 
 // run runs a single URL test.
 func (t Check) run() (s Status) {
-	time_start := time.Now()
+	timeStart := time.Now()
 	resp, err := client.Get(t.URL)
 	s = Status{
 		Node:      node.Self,
 		Url:       t,
-		Rtime:     int(time.Since(time_start) / 1000000),
+		Rtime:     int(time.Since(timeStart) / 1000000),
 		Timestamp: int(time.Now().Unix()),
 	}
 	if err != nil {
 		s.StatusCode = 0
 		s.StatusTxt = err.Error()
 	} else {
-		defer resp.Body.Close()
+		defer logClose(resp.Body)
 		s.StatusCode = resp.StatusCode
 		s.StatusTxt = resp.Status
 	}
@@ -71,7 +80,7 @@ func (t Check) RunAsync(c chan Status) {
 			s.StatusCode = 0
 			s.StatusTxt = err.Error()
 		} else {
-			defer resp.Body.Close()
+			defer logClose(resp.Body)
 			s.StatusCode = resp.StatusCode
 			s.StatusTxt = resp.Status
 		}
@@ -83,14 +92,15 @@ type Checks []Check
 
 // Run exposes the testing functionality for an array of URL tests, allowing
 // them to be conducted simultaneously.
-func (t Checks) Run() (s Statuses) {
-	testCount := len(t)
+func (c Checks) Run() (s Statuses) {
+	testCount := len(c)
 	results := make(chan Status, testCount)
-	for i, v := range t {
+	for i, v := range c {
+		check := v
 		if i == testCount {
-			break // Don't run more tests that we prepared for
+			break // Don'c run more tests that we prepared for
 		}
-		go func() { results <- v.run() }() // run tests concurrently
+		go func() { results <- check.run() }() // run tests concurrently
 	}
 	for i := 0; i < testCount; i++ {
 		s = append(s, <-results)

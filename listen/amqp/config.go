@@ -76,10 +76,9 @@ type broker struct {
 // newBroker attempts to load and parse a given AMQP config filename and
 // returns a resulting Broker object.
 func newBroker(config []byte) (*broker, error) {
-	var raw = []byte(config)
 	var b broker
 	var c Config
-	if err := json.Unmarshal(raw, &c); err != nil {
+	if err := json.Unmarshal(config, &c); err != nil {
 		return &b, errors.Wrap(err, "unable to parse AMQP config")
 	}
 	if err := c.validate(); err != nil {

@@ -11,7 +11,6 @@ var log *logrus.Entry
 
 // Initialise configures the logging level for the heartbeat module
 func Initialise(ll logrus.Level) {
-
 	log = logger.New("heartbeat", ll)
 }
 
