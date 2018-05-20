@@ -49,7 +49,8 @@ func initialise() error {
 	var err error
 
 	// Retrieve configuration
-	if err := config.Initialise(flags.ConfLog.Level); err != nil {
+	conf := config.NewSkeleton(flags.ConfLog.Level)
+	if err := conf.Validate(); err != nil {
 		return errors.Wrap(err, "could not load config")
 	}
 	if err := node.Initialise(flags.ConfLog.Level); err != nil {
@@ -57,7 +58,7 @@ func initialise() error {
 	}
 
 	// Provide config to listen, coordinate, consensus and url and set the watchdog channels
-	if routineStatus["listen"], hchan, schan, err = listen.Initialise(*config.Unparsed.Listen, flags.ListenLog.Level); err != nil {
+	if routineStatus["listen"], hchan, schan, err = listen.Initialise(conf.Listen, flags.ListenLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise listen functions")
 	}
 	if routineStatus["coordinate"], err = coordinate.Initialise(hchan, flags.CoordLog.Level); err != nil {
@@ -66,16 +67,16 @@ func initialise() error {
 	if routineStatus["consensus"], err = consensus.Initialise(schan, flags.ConsensusLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise consensus monitoring routine")
 	}
-	if routineStatus["url"], err = url.Initialise(*config.Unparsed.Tests, flags.UrlLog.Level); err != nil {
+	if routineStatus["url"], err = url.Initialise(conf.Tests, flags.UrlLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise URL testing functions")
 	}
 
 	// Publish, heartbeat and alert provide only blocking methods and so don't need a watchdog
 	heartbeat.Initialise(flags.BeatLog.Level)
-	if err := publish.Initialise(*config.Unparsed.Publish, hchan, schan, flags.PubLog.Level); err != nil {
+	if err := publish.Initialise(conf.Publish, hchan, schan, flags.PubLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise publish functions")
 	}
-	if err := alert.Initialise(*config.Unparsed.Contacts, *config.Unparsed.Alert, flags.AlertLog.Level); err != nil {
+	if err := alert.Initialise(conf.Contacts, conf.Alert, flags.AlertLog.Level); err != nil {
 		return errors.Wrap(err, "could not initialise alert function")
 	}
 	return nil
