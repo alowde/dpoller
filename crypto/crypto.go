@@ -5,13 +5,15 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/scrypt"
+	"io"
 )
 
-// Decrypt decrypts data using 256-bit AES-GCM.  This both hides the content of
-// the data and provides a check that it hasn't been altered.
+// Decrypt decrypts data using 256-bit AES-GCM that has been encrypted in the format output provided by the Encrypt
+// function.
 func Decrypt(ciphertext []byte, key *[32]byte) (plaintext []byte, err error) {
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
@@ -41,6 +43,39 @@ func Decrypt64(ciphertext string, key *[32]byte) (plaintext []byte, err error) {
 		return nil, errors.Wrap(err, "could not decode ciphertext as base64 string")
 	}
 	return Decrypt(data, key)
+}
+
+// Encrypt encrypts data using 256-bit AES-GCM.  This both hides the content of the data and provides the ability to
+// verify that it hasn't been altered.
+func Encrypt(plaintext []byte, key *[32]byte) (ciphertext []byte, err error) {
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	_, err = io.ReadFull(rand.Reader, nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+}
+
+// Encrypt64 takes the same parameters as Encrypt but outputs a base64 encoded string suitable for exchange in ASCII
+// formats.
+func Encrypt64(plaintext []byte, key *[32]byte) (ciphertext string, err error) {
+	var cipherbytes []byte
+	cipherbytes, err = Encrypt(plaintext, key)
+	if err != nil {
+		return
+	}
+	return base64.StdEncoding.EncodeToString(cipherbytes), nil
 }
 
 // Stretch uses scrypt to stretch the provided passphrase to something appropriate for use with Encrypt/Decrypt

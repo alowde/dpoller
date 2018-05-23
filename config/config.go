@@ -54,6 +54,30 @@ func (s *Skeleton) Validate() error {
 	return nil
 }
 
+// Encrypt collapses the entire configuration barring metadata into an encrypted string stored as metadata. The
+// resulting metadata can be rehydrated with the loadEncrypted function or turned into a JSON blob that, when split
+// into Key and Encrypted, is suitable for transmission or storage on/via untrusted media.
+func (s *Skeleton) Encrypt() error {
+	t := *s                           // operate on a copy of the skeleton so we can back out if there's an error
+	meta := t.Config                  // copy the existing metadata including key
+	t.Config = configDetails{}        // remove metadata from skeleton copy
+	plaintext, err := json.Marshal(t) // get a JSON blob derived from the skeleton copy
+	if err != nil {
+		return errors.Wrap(err, "could not marshal config to JSON")
+	}
+	sk, err := crypto.Stretch(s.Config.Key)
+	if err != nil {
+		return errors.Wrap(err, "could not stretch key")
+	}
+	if meta.Encrypted, err = crypto.Encrypt64(plaintext, sk); err != nil {
+		return errors.Wrap(err, "could not encrypt config")
+	}
+	// As there's no further failures that can be caught, nil out skeleton and insert only the metadata again
+	*s = Skeleton{}
+	s.Config = meta
+	return nil
+}
+
 func (s *Skeleton) load(r io.Reader) (err error) {
 	var buf bytes.Buffer
 	if _, err := buf.ReadFrom(r); err != nil {
