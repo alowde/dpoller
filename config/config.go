@@ -65,7 +65,7 @@ func (s *Skeleton) Encrypt() error {
 	if err != nil {
 		return errors.Wrap(err, "could not marshal config to JSON")
 	}
-	sk, err := crypto.Stretch(s.Config.Key)
+	sk, err := crypto.Stretch(s.Config.Key, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not stretch key")
 	}
@@ -143,7 +143,7 @@ func (s *Skeleton) loadEncrypted() (err error) {
 	}
 
 	var key *[32]byte
-	if key, err = crypto.Stretch(s.Config.Key); err != nil {
+	if key, err = crypto.Stretch(s.Config.Key, nil); err != nil {
 		return errors.Wrap(err, "could not determine key from passphrase")
 	}
 

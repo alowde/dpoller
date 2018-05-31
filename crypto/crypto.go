@@ -81,11 +81,17 @@ func Encrypt64(plaintext []byte, key *[32]byte) (ciphertext string, err error) {
 // Stretch uses scrypt to stretch the provided passphrase to something appropriate for use with Encrypt/Decrypt
 // functions and hopefully more resilient. Parameters were selected by benchmark to use 64MiB of memory and > 0.5
 // seconds to hash
-func Stretch(passphrase string) (key *[32]byte, err error) {
+func Stretch(passphrase string, salt []byte) (key *[32]byte, err error) {
+	// In some cases, e.g. configuration handling, a salt doesn't add value as we only have the one encrypted
+	// value. In other cases like message exchange a salt is important to ensure messages can't be decrypted in bulk
+	// (but implementing it will require minor changes to the interchange format).
+	if len(salt) < 1 {
+		salt = []byte("unsalted")
+	}
 	if len(passphrase) < 8 {
 		return nil, errors.New("passphrase is too short")
 	}
-	keySlice, err := scrypt.Key([]byte(passphrase), []byte("unsalted"), 65536, 8, 4, 32)
+	keySlice, err := scrypt.Key([]byte(passphrase), salt, 65536, 8, 4, 32)
 	// scrypt only gives us back a slice so we explicitly check it before conversion
 	if len(keySlice) != 32 {
 		return nil, errors.Wrap(err, "invalid key returned")
