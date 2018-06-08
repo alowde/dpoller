@@ -1,10 +1,10 @@
 package heartbeat
 
-import "testing"
 import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/node"
 	"net"
+	"testing"
 	"time"
 )
 
@@ -18,6 +18,8 @@ var node2 = node.Node{
 	net.IP{10, 0, 0, 2},
 	"test_node_2",
 }
+
+/*
 var node3 = node.Node{
 	3000000000000000000,
 	net.IP{10, 0, 0, 3},
@@ -28,6 +30,7 @@ var node4 = node.Node{
 	net.IP{10, 0, 0, 4},
 	"test_node_4",
 }
+*/
 
 var testtime time.Time
 

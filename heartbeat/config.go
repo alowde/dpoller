@@ -9,11 +9,12 @@ import (
 
 var log *logrus.Entry
 
-// Initialise configures the logging level for the heartbeat module
+// Initialise configures the logging level for the heartbeat module.
 func Initialise(ll logrus.Level) {
 	log = logger.New("heartbeat", ll)
 }
 
+// Beat holds node status at a point in time, including Coordinator/Feasible Coordinator status.
 type Beat struct {
 	node.Node
 	Coordinator bool
@@ -21,6 +22,7 @@ type Beat struct {
 	Timestamp   time.Time
 }
 
+// NewBeat returns an initialised Beat.
 func NewBeat() Beat {
 	return Beat{
 		node.Self,
