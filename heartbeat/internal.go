@@ -21,7 +21,7 @@ func (n RoutineNormal) Error() string {
 	return fmt.Sprintf("Routine Normal (%v)", n.origin)
 }
 
-func (n *RoutineNormal) SetOrigin(o string) RoutineNormal {
+func (n RoutineNormal) SetOrigin(o string) RoutineNormal {
 	n.origin = o
-	return *n
+	return n
 }

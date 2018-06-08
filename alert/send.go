@@ -8,7 +8,7 @@ import (
 var notBefore = make(map[string]time.Time)
 
 // Send requests an alert for any configured contacts, passing on check & result information
-func Send(c check.Check, r check.Result) error {
+func Send(c check.Check, r check.Result) {
 	// don't send alerts more often than check.Check.AlertInterval
 	if nb, exist := notBefore[c.Name]; !exist || nb.Before(time.Now()) {
 		notBefore[c.Name] = time.Now().Add(time.Duration(c.AlertInterval) * time.Second)
@@ -22,5 +22,4 @@ func Send(c check.Check, r check.Result) error {
 			}
 		}
 	}
-	return nil
 }
