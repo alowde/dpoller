@@ -8,6 +8,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
+	"github.com/alowde/dpoller/node"
 	"time"
 )
 
@@ -47,7 +48,9 @@ timer:
 				log.WithField("nodes", knownBeats.GetNodes()).Debug("Aging out nodes")
 				knownBeats.AgeOut()
 				log.WithField("nodes", knownBeats.GetNodes()).Debug("Evaluating nodes")
-				knownBeats.Evaluate() // because this is a blocking call we don't need to lock the map
+				c, f := knownBeats.ToBeats().Evaluate(heartbeat.GetCoordinator(), heartbeat.GetFeasibleCoordinator(), node.Self.ID)
+				heartbeat.SetCoordinator(c)
+				heartbeat.SetFeasibleCoordinator(f)
 				log.WithFields(logrus.Fields{
 					"coordinators":         knownBeats.ToBeats().CoordCount(),
 					"feasibleCoordinators": knownBeats.ToBeats().FeasCount(),

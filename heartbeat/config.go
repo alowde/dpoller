@@ -3,8 +3,6 @@ package heartbeat
 import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/logger"
-	"github.com/alowde/dpoller/node"
-	"time"
 )
 
 var log *logrus.Entry
