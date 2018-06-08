@@ -31,10 +31,12 @@ func (bm BeatMap) ToBeats() (b Beats) {
 }
 
 // Evaluate calls the Beats.Evaluate function on the Beatmap's Beats
+/*
 func (bm BeatMap) Evaluate() {
 	ba := bm.ToBeats()
 	ba.Evaluate()
 }
+*/
 
 // GetNodes returns the list of nodes from a BeatMap
 func (bm BeatMap) GetNodes() (n []int64) {
