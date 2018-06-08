@@ -102,13 +102,16 @@ func (b *broker) send(ctx context.Context, msg []byte, msgType string) error {
 				return errors.Wrap(err, "could not connect before publishing to amqp")
 			}
 		default:
-			if err := b.achannel.Publish(b.Exchange, "status", false, false, amqpMsg); err == nil {
+			err := b.achannel.Publish(b.Exchange, "status", false, false, amqpMsg)
+			if err == nil {
 				return nil
-			} else {
-				log.WithError(err).
-					WithField("message", msg).
-					Warn("received error while publishing message")
-				b.connection.Close() // close the connection so that we can try again cleanly
+			}
+			log.WithError(err).
+				WithField("message", msg).
+				Warn("received error while publishing message")
+			// close the connection so that we can try again cleanly
+			if err := b.connection.Close(); err != nil {
+				log.Warn("AMQP connection may not have closed cleanly")
 			}
 		}
 	}
