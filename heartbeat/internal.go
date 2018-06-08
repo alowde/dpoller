@@ -21,6 +21,7 @@ func (n RoutineNormal) Error() string {
 	return fmt.Sprintf("Routine Normal (%v)", n.origin)
 }
 
+// SetOrigin adds origin information to a RoutineNormal
 func (n RoutineNormal) SetOrigin(o string) RoutineNormal {
 	n.origin = o
 	return n
