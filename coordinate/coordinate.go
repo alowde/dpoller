@@ -33,7 +33,7 @@ func updateKnownBeats(in chan heartbeat.Beat, statusReport chan error) {
 timer:
 	for {
 		var interval time.Duration
-		if heartbeat.Self.Coordinator || heartbeat.Self.Feasible {
+		if heartbeat.GetCoordinator() || heartbeat.GetFeasibleCoordinator() {
 			interval = 5 * time.Second
 		} else {
 			interval = 30 * time.Second
@@ -51,8 +51,8 @@ timer:
 				log.WithFields(logrus.Fields{
 					"coordinators":         knownBeats.ToBeats().CoordCount(),
 					"feasibleCoordinators": knownBeats.ToBeats().FeasCount(),
-					"is_coordinator":       heartbeat.Self.Coordinator,
-					"is_feasible":          heartbeat.Self.Feasible,
+					"is_coordinator":       heartbeat.GetCoordinator(),
+					"is_feasible":          heartbeat.GetFeasibleCoordinator(),
 				}).Info("Finished evaluating feasible/coordinators")
 				statusReport <- heartbeat.RoutineNormal{Timestamp: time.Now()}
 				continue timer

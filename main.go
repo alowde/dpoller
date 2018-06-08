@@ -98,7 +98,7 @@ func checkHeartbeats(result chan error, statusChans map[string]chan error) {
 	for {
 		var routineStatus = make(map[string]error)
 		var waitTime time.Duration
-		if heartbeat.Self.Coordinator || heartbeat.Self.Feasible {
+		if heartbeat.GetCoordinator() || heartbeat.GetFeasibleCoordinator() {
 			waitTime = 5 * time.Second
 		} else {
 			waitTime = 30 * time.Second
