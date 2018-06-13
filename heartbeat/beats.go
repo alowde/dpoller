@@ -2,9 +2,7 @@ package heartbeat
 
 import (
 	"fmt"
-	"github.com/alowde/dpoller/node"
 	"math"
-	"time"
 )
 
 // Beats is a slice of Beat, mainly used for convenient aggregate calculation functions.
@@ -66,21 +64,14 @@ func (beats Beats) bestActiveFeas() (feasID int64, e error) {
 	return
 }
 
-func (beats Beats) ensureSelfInBeats() Beats {
-	includesSelf := false
-	for _, v := range beats {
-		if v.ID == node.Self.ID {
-			includesSelf = true
-			break
+func (beats Beats) checkIdExists(nodeID int64) bool {
+	for _, b := range beats {
+		if b.ID == nodeID {
+			return true
 		}
 	}
-	if !includesSelf {
-		beats = append(beats, Beat{node.Self, coordinator, feasibleCoordinator, time.Now()})
-	}
-	return beats
+	return false
 }
-
-// TODO: refactor these routines to have no knowledge of the node's state
 
 // Evaluate assesses the set of known nodes to determine which node has/should have the Coordinator role. It implements
 // the following decision tree:
@@ -100,8 +91,12 @@ func (beats Beats) ensureSelfInBeats() Beats {
 // (perhaps based on number of known nodes) but the current one has the advantage of being very simple to reason about.
 func (beats Beats) Evaluate(isCoord, isFeas bool, nodeID int64) (shouldBeCoordinator, shouldBeFeasible bool) {
 
-	// First make sure the list of beats includes this node (checking by ID). This simplifies the check process.
-	beats = beats.ensureSelfInBeats()
+	// Beats must include the given nodeID or we can't continue - enforcing this constraint simplifies this method and
+	// puts responsibility back on the caller to provide sane data
+	// TODO: Extend the Evaluate() method to throw an error instead of panicking
+	if !beats.checkIdExists(nodeID) {
+		log.Fatal("Can't evaluate beats without self included")
+	}
 
 	bf, _ := beats.bestFeas()
 
