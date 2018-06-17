@@ -1,11 +1,11 @@
 // Package config receives and processes the root-level configuration and allocates configuration sections to other
 // packages.
-package config
+package main
 
 import (
 	"bytes"
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/logger"
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
@@ -16,12 +16,12 @@ import (
 
 func logClose(c io.Closer) {
 	if err := c.Close(); err != nil {
-
-		log.WithError(err).
+		logrus.WithError(err).
 			Warn("Somehow failed to close a Closer")
 	}
 }
 
+// Skeleton is the skeleton of a configuration. Only exists to provide first level of config unmarshal.
 type Skeleton struct {
 	Listen   *json.RawMessage `json:"listeners"`
 	Publish  *json.RawMessage `json:"publishers"`
@@ -29,7 +29,7 @@ type Skeleton struct {
 	Contacts *json.RawMessage `json:"contacts"`
 	Tests    *json.RawMessage `json:"urls"`
 	Config   *configDetails   `json:"config"`
-	logger   *log.Entry
+	logger   *logrus.Entry
 }
 
 type configDetails struct {
@@ -37,7 +37,7 @@ type configDetails struct {
 	ConfigKey string `json:"key"`
 }
 
-func (c *Skeleton) Validate() error {
+func (c *Skeleton) validate() error {
 	if c.Listen == nil {
 		return errors.New("undefined listen block")
 	} else if c.Publish == nil {
@@ -63,9 +63,11 @@ func (c *Skeleton) load(r io.Reader) error {
 	return nil
 }
 
-// Initialise retrieves static config from local file(s) and dynamic config from an HTTP server.
-func (c *Skeleton) Initialise(ll log.Level) error {
+// NewSkeleton returns a new Skeleton that includes all available configuration, and an error if there's insufficient
+// valid configuration available
+func NewSkeleton(ll logrus.Level) (c *Skeleton, err error) {
 
+	c = new(Skeleton)
 	c.logger = logger.New("config", ll)
 
 	// Attempt to open and merge config from each of the provided file names
@@ -88,23 +90,23 @@ func (c *Skeleton) Initialise(ll log.Level) error {
 	}
 
 	// Attempt to receive and merge config from the HTTP URL, if any
-	log.Debug("Loading http configuration")
+	c.logger.Debug("Loading http configuration")
 	if c.Config.ConfigURL != "" {
 		res, err := http.Get(c.Config.ConfigURL)
 		if err != nil {
-			log.WithError(err).
+			c.logger.WithError(err).
 				WithField("url", c.Config.ConfigURL).
 				Warn("couldn't read config from URL")
-			return c.Validate()
+			return c, c.validate()
 
 		}
 		defer logClose(res.Body)
 		if err := c.load(res.Body); err != nil {
-			log.WithError(err).
+			c.logger.WithError(err).
 				WithField("url", c.Config.ConfigURL).
 				Warn("couldn't parse config from URL")
-			return c.Validate()
+			return c, c.validate()
 		}
 	}
-	return c.Validate()
+	return c, c.validate()
 }

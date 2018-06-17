@@ -26,3 +26,13 @@ func (n RoutineNormal) SetOrigin(o string) RoutineNormal {
 	n.origin = o
 	return n
 }
+
+type Timeout string
+
+func (t Timeout) Error() string {
+	return string(t)
+}
+
+func NewTimeout() Timeout {
+	return ""
+}
