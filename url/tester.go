@@ -66,8 +66,7 @@ func runTests(routineStatus chan error) {
 			tr.run()
 			runList = append(runList, tr)
 		}
-		s := heartbeat.NewRoutineNormal()
-		s.SetOrigin("init routine")
+		s := heartbeat.NewRoutineNormal().SetOrigin("init routine")
 		routineStatus <- s
 		<-minWait
 	}
@@ -87,7 +86,7 @@ func runTests(routineStatus chan error) {
 				}
 				cancel()
 				log.WithField("url", tr.URL).Debug("Published a result")
-				if time.Now().Sub(tr.lastRan) > (60 * time.Second) {
+				if time.Since(tr.lastRan) > (60 * time.Second) {
 					runList[k].run()
 				}
 			default:

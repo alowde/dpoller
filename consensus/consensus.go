@@ -34,7 +34,7 @@ func checkConsensus(in chan check.Status, routineStatus chan error) {
 		for {
 			select {
 			case <-interval:
-				if heartbeat.Self.Coordinator { // Only the coordinator checks URL statuses
+				if heartbeat.GetCoordinator() { // Only the coordinator checks URL statuses
 					dd := urlStatuses.Dedupe()
 					statusSet := dd.PerCheckName() // Dedupe and group status check results by name
 					log.WithField("status count", len(statusSet)).

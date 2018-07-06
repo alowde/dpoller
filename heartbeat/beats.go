@@ -2,13 +2,13 @@ package heartbeat
 
 import (
 	"fmt"
-	"github.com/alowde/dpoller/node"
 	"math"
 )
 
 // Beats is a slice of Beat, mainly used for convenient aggregate calculation functions.
 type Beats []Beat
 
+// CoordCount calculates the number of nodes in a Beats array that are Coordinators
 func (beats Beats) CoordCount() (count int) {
 	for _, b := range beats {
 		if b.Coordinator {
@@ -18,22 +18,11 @@ func (beats Beats) CoordCount() (count int) {
 	return
 }
 
+// FeasCount calculates the number of nodes in a Beats array that are Feasible Coordinators
 func (beats Beats) FeasCount() (count int) {
 	for _, b := range beats {
 		if b.Feasible {
 			count++
-		}
-	}
-	return
-}
-
-func (beats Beats) bestCoord() (coordID int64, e error) {
-	e = fmt.Errorf("no values")
-	coordID = math.MaxInt64
-	for _, b := range beats {
-		e = nil
-		if b.ID < coordID {
-			coordID = b.ID
 		}
 	}
 	return
@@ -75,93 +64,89 @@ func (beats Beats) bestActiveFeas() (feasID int64, e error) {
 	return
 }
 
-func (beats Beats) toBeatMap() (result BeatMap) {
-	var t BeatMap = make(map[int64]Beat)
-	for _, v := range beats {
-		if _, ok := t[v.ID]; ok {
-			if t[v.ID].Timestamp.Before(v.Timestamp) { // keep only the most recently generated heartbeat for each node
-				t[v.ID] = v
-			}
-		} else {
-			t[v.ID] = v
+func (beats Beats) checkIdExists(nodeID int64) bool {
+	for _, b := range beats {
+		if b.ID == nodeID {
+			return true
 		}
 	}
-	return t
+	return false
 }
 
-// TODO: refactor these routines to have no knowledge of the node's state
+// Evaluate assesses the set of known nodes to determine which node has/should have the Coordinator role. It implements
+// the following decision tree:
+// - If there's no coordinator and this node is the best feasible coordinator, take the role
+// - If there's one or more coordinators and this node is one of them:
+// -- If this node is the best coordinator no action is required
+// -- If this node is not the best coordinator, reset to no roles
+// - If there's no feasible coordinator and this node is the best feasible coordinator, take the role
+// - If there's one or more feasible coordinators and this node is one of them:
+// -- If this node is the best feasible coordinator no action is required
+// -- If this node is not the best feasible coordinator reset to no roles
+// - Finally, if there's a coordinator and feasible coordinator but we're not them, no action is required.
+// Implementing this as a two-phase selection is intended to keep the inevitable flapping due to unreliable networks at
+// the first phase. If a coordinator loses its position it won't immediately compete for it again which should reduce
+// the rate of role-change.
+// It's possible that the evaluation algorithm could be modified to take into account perceived connection stability
+// (perhaps based on number of known nodes) but the current one has the advantage of being very simple to reason about.
+func (beats Beats) Evaluate(isCoord, isFeas bool, nodeID int64) (shouldBeCoordinator, shouldBeFeasible bool) {
 
-// Evaluate assesses the set of known nodes to determine which node has/should have the Coordinator role
-func (beats Beats) Evaluate() {
+	// Beats must include the given nodeID or we can't continue - enforcing this constraint simplifies this method and
+	// puts responsibility back on the caller to provide sane data
+	// TODO: Extend the Evaluate() method to throw an error instead of panicking
+	if !beats.checkIdExists(nodeID) {
+		log.Fatal("Can't evaluate beats without self included")
+	}
+
+	bf, _ := beats.bestFeas()
+
+	// First check if we're a feasible coordinator that should be promoted
 	if beats.CoordCount() == 0 {
-		if Self.Coordinator {
-			log.Infoln("This node is the uncontested coordinator, no further evaluation")
-			Self.Feasible = false
-			return
-		} else {
-			log.Infoln("No coordinators exist at all")
-			if Self.Feasible {
-				log.Infoln("This node is the feasible coordinator, promote")
-				Self.Coordinator = true
-				Self.Feasible = false
-				return
-			} else {
-				log.Infoln("This node is not the feasible coordinator, assess feasible coordinator status")
-				beats.evaluateFeas()
-				return
-			}
-		}
-	} else {
-		if Self.Coordinator {
-			best, _ := beats.bestActiveCoord()
-			if best < node.Self.ID {
-				log.Infoln("This node is not the best coordinator, update Self and assess feasible coordinators")
-				Self.Coordinator = false
-				beats.evaluateFeas()
-				return
-			} else {
-				log.Infoln("node is the best coordinator, cease further evaluation")
-				Self.Feasible = false
-				return
-			}
-		} else {
-			log.Infoln("There is one or more coordinators already, move to evaluating feasible coordinators")
-			beats.evaluateFeas()
+		log.Infoln("No coordinators exist at all")
+
+		if isFeas && bf == nodeID {
+			log.Infoln("This node is the best feasible coordinator, promote")
+			shouldBeCoordinator = true
+			shouldBeFeasible = false
 			return
 		}
 	}
-}
 
-// Evaluate assesses the set of known nodes to determine which node has/should have the Feasible Coordinator role
-func (beats Beats) evaluateFeas() {
-	if beats.FeasCount() == 0 {
-		if Self.Feasible {
-			log.Infoln("This node is the uncontested feasible coordinator, no further evaluation")
+	// Check if we're a competing coordinator. If so and we're not the best unset both roles and return, otherwise set
+	// the coordinator role and return.
+	if beats.CoordCount() > 0 && isCoord {
+		if bac, _ := beats.bestActiveCoord(); bac != nodeID {
+			shouldBeCoordinator = false
+			shouldBeFeasible = false
 			return
-		} else {
-			log.Infoln("No feasible coordinators exist")
-			best, _ := beats.bestFeas()
-			if best < node.Self.ID {
-				log.Infoln("This node is not the best possible feasible coordinator, unset")
-				Self.Feasible = false
-				return
-
-			} else {
-				log.Infoln("This node is the best possible feasible coordinator, set")
-				Self.Feasible = true
-				return
-			}
-
 		}
-	} else {
-		if Self.Feasible {
-			log.Infoln("This node is a contested feasible coordinator")
-			best, _ := beats.bestActiveFeas()
-			if best < node.Self.ID {
-				log.Infoln("This node is not the best feasible coordinator in contention, unset")
-				// WARNING: This means incomplete/one-way message transmission may cause flapping!
-				Self.Feasible = false
-			}
-		}
+		shouldBeCoordinator = true
+		shouldBeFeasible = false
+		return
 	}
+
+	// check if we need to take the feasible coordinator role
+	if beats.FeasCount() == 0 && bf == nodeID {
+		shouldBeCoordinator = false
+		shouldBeFeasible = true
+		return
+	}
+
+	// Check if we're a competing feasible coordinator. If so and we're not the best unset both roles and return,
+	// otherwise set the feasible coordinator role and return.
+	if beats.FeasCount() > 0 && isFeas {
+		if baf, _ := beats.bestActiveFeas(); baf != nodeID {
+			shouldBeCoordinator = false
+			shouldBeFeasible = false
+			return
+		}
+		shouldBeCoordinator = false
+		shouldBeFeasible = true
+		return
+	}
+
+	// No action required - there's a coordinator and feasible coordinator but we're not them.
+	shouldBeCoordinator = false
+	shouldBeFeasible = false
+	return
 }

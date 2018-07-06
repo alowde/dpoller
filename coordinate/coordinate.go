@@ -8,6 +8,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
+	"github.com/alowde/dpoller/node"
 	"time"
 )
 
@@ -33,7 +34,7 @@ func updateKnownBeats(in chan heartbeat.Beat, statusReport chan error) {
 timer:
 	for {
 		var interval time.Duration
-		if heartbeat.Self.Coordinator || heartbeat.Self.Feasible {
+		if heartbeat.GetCoordinator() || heartbeat.GetFeasibleCoordinator() {
 			interval = 5 * time.Second
 		} else {
 			interval = 30 * time.Second
@@ -47,12 +48,14 @@ timer:
 				log.WithField("nodes", knownBeats.GetNodes()).Debug("Aging out nodes")
 				knownBeats.AgeOut()
 				log.WithField("nodes", knownBeats.GetNodes()).Debug("Evaluating nodes")
-				knownBeats.Evaluate() // because this is a blocking call we don't need to lock the map
+				c, f := knownBeats.ToBeats().Evaluate(heartbeat.GetCoordinator(), heartbeat.GetFeasibleCoordinator(), node.Self.ID)
+				heartbeat.SetCoordinator(c)
+				heartbeat.SetFeasibleCoordinator(f)
 				log.WithFields(logrus.Fields{
 					"coordinators":         knownBeats.ToBeats().CoordCount(),
 					"feasibleCoordinators": knownBeats.ToBeats().FeasCount(),
-					"is_coordinator":       heartbeat.Self.Coordinator,
-					"is_feasible":          heartbeat.Self.Feasible,
+					"is_coordinator":       heartbeat.GetCoordinator(),
+					"is_feasible":          heartbeat.GetFeasibleCoordinator(),
 				}).Info("Finished evaluating feasible/coordinators")
 				statusReport <- heartbeat.RoutineNormal{Timestamp: time.Now()}
 				continue timer

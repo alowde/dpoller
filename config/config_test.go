@@ -66,7 +66,7 @@ func TestLoad(t *testing.T) {
 	for _, conf := range tables {
 		b := bytes.NewBufferString(conf)
 		s := new(Skeleton)
-		s.log = logrus.NewEntry(logrus.New())
+		s.logger = logrus.NewEntry(logrus.New())
 
 		if err := s.load(b); err != nil {
 			t.Errorf("Received error %v", err)
@@ -80,8 +80,8 @@ func TestLoadHTTP(t *testing.T) {
 	}))
 	defer ts.Close()
 	s := Skeleton{
-		Config: configDetails{URL: ts.URL},
-		log:    logrus.NewEntry(logrus.New()),
+		Config: &configDetails{URL: ts.URL},
+		logger: logrus.NewEntry(logrus.New()),
 	}
 	if err := s.loadHTTP(); err != nil {
 		t.Errorf("Received error %v", err)

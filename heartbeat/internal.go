@@ -21,7 +21,18 @@ func (n RoutineNormal) Error() string {
 	return fmt.Sprintf("Routine Normal (%v)", n.origin)
 }
 
-func (n *RoutineNormal) SetOrigin(o string) RoutineNormal {
+// SetOrigin adds origin information to a RoutineNormal
+func (n RoutineNormal) SetOrigin(o string) RoutineNormal {
 	n.origin = o
-	return *n
+	return n
+}
+
+type Timeout string
+
+func (t Timeout) Error() string {
+	return string(t)
+}
+
+func NewTimeout() Timeout {
+	return ""
 }

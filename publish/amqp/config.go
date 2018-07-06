@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Broker holds the configuration and state of the AMQP broker
 var Broker = &broker{}
 
 var log *logrus.Entry

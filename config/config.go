@@ -5,7 +5,7 @@ package config
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/crypto"
 	"github.com/alowde/dpoller/logger"
 	"github.com/ghodss/yaml"
@@ -17,7 +17,7 @@ import (
 
 func logClose(c io.Closer) {
 	if err := c.Close(); err != nil {
-		logrus.WithError(err).
+		log.WithError(err).
 			Warn("Somehow failed to close a Closer")
 	}
 }
@@ -25,13 +25,13 @@ func logClose(c io.Closer) {
 // Skeleton contains raw configuration data for use by various modules throughout the application. It explicitly
 // contains opaque configuration data with the exception of the configDetails, which is for use by this package.
 type Skeleton struct {
-	Listen   json.RawMessage `json:"listeners"`
-	Publish  json.RawMessage `json:"publishers"`
-	Alert    json.RawMessage `json:"alerters"`
-	Contacts json.RawMessage `json:"contacts"`
-	Tests    json.RawMessage `json:"urls"`
-	Config   configDetails   `json:"config"`
-	log      *logrus.Entry
+	Listen   *json.RawMessage `json:"listeners"`
+	Publish  *json.RawMessage `json:"publishers"`
+	Alert    *json.RawMessage `json:"alerters"`
+	Contacts *json.RawMessage `json:"contacts"`
+	Tests    *json.RawMessage `json:"urls"`
+	Config   *configDetails   `json:"config"`
+	logger   *log.Entry
 }
 
 type configDetails struct {
@@ -41,7 +41,7 @@ type configDetails struct {
 }
 
 // Validate performs basic sanity checking of each provided config section
-func (s *Skeleton) Validate() error {
+func (s *Skeleton) validate() error {
 	if s.Listen == nil {
 		return errors.New("undefined listen block")
 	} else if s.Publish == nil {
@@ -60,7 +60,7 @@ func (s *Skeleton) Validate() error {
 func (s *Skeleton) Encrypt() error {
 	t := *s                           // operate on a copy of the skeleton so we can back out if there's an error
 	meta := t.Config                  // copy the existing metadata including key
-	t.Config = configDetails{}        // remove metadata from skeleton copy
+	t.Config = new(configDetails)     // remove metadata from skeleton copy
 	plaintext, err := json.Marshal(t) // get a JSON blob derived from the skeleton copy
 	if err != nil {
 		return errors.Wrap(err, "could not marshal config to JSON")
@@ -84,7 +84,7 @@ func (s *Skeleton) load(r io.Reader) (err error) {
 		return errors.Wrap(err, "failed to read config data from provided io.Reader")
 	}
 	if err := yaml.Unmarshal(buf.Bytes(), s); err != nil {
-		s.log.WithField("config data", buf.String()).
+		s.logger.WithField("config data", buf.String()).
 			Debug("Failed to parse provided config data")
 		return errors.Wrap(err, "failed to parse provided config data")
 	}
@@ -92,18 +92,18 @@ func (s *Skeleton) load(r io.Reader) (err error) {
 }
 
 func (s *Skeleton) loadFiles(filenames []string) (err error) {
-	s.log.Debug("Loading file configuration")
+	s.logger.Debug("Loading file configuration")
 	var ok bool
 	for _, name := range filenames {
 		file, err := os.Open(name)
 		if err != nil {
-			s.log.WithError(err).
+			s.logger.WithError(err).
 				WithField("file", name).
 				Debug("couldn't read config file")
 			continue
 		}
 		if err := s.load(file); err != nil {
-			s.log.WithError(err).
+			s.logger.WithError(err).
 				WithField("file", name).
 				Warn("couldn't parse config file")
 			continue
@@ -117,15 +117,16 @@ func (s *Skeleton) loadFiles(filenames []string) (err error) {
 }
 
 func (s *Skeleton) loadHTTP() (err error) {
-	s.log.Debug("Loading http configuration")
+	s.logger.Debug("Loading http configuration")
 	if s.Config.URL == "" {
 		return errors.New("Invalid config URL")
 	}
 	res, err := http.Get(s.Config.URL)
 	if err != nil {
-		s.log.WithError(err).
+		s.logger.WithError(err).
 			WithField("url", s.Config.URL).
 			Warn("couldn't read config from URL")
+		return err
 	}
 	defer logClose(res.Body)
 	return s.load(res.Body)
@@ -149,43 +150,43 @@ func (s *Skeleton) loadEncrypted() (err error) {
 
 	plaintext, err := crypto.Decrypt64(s.Config.Encrypted, key)
 	if err != nil {
-		s.log.WithError(err).
+		s.logger.WithError(err).
 			Warn("couldn't decrypt encrypted configuration data")
+		return err
 	}
 	if err := s.load(bytes.NewReader(plaintext)); err != nil {
-		s.log.WithError(err).
+		s.logger.WithError(err).
 			Warn("couldn't parse decrypted configuration data")
+		return err
 	}
 	return nil
 }
 
 // NewSkeleton returns a configuration skeleton with data loaded from environment variables, filenames, HTTP, etc.
-// This may return a nil Skeleton and it's the caller's responsibility to call Validate() on the returned value or
-// otherwise validate the data provided.
-func NewSkeleton(ll logrus.Level) Skeleton {
+func NewSkeleton(ll log.Level) (s *Skeleton, err error) {
 
-	S := Skeleton{}
+	s = new(Skeleton)
 
-	S.log = logger.New("config", ll)
+	s.logger = logger.New("config", ll)
 
 	confNames := []string{"config.json", "config.yaml", "config.yml"}
 
-	if err := S.loadFiles(confNames); err != nil {
-		S.log.WithError(err).
+	if err := s.loadFiles(confNames); err != nil {
+		s.logger.WithError(err).
 			WithField("filenames", confNames).
 			Warn("couldn't load config from files")
 	}
 
-	if err := S.loadHTTP(); err != nil {
-		S.log.WithError(err).
-			WithField("url", S.Config.URL).
+	if err := s.loadHTTP(); err != nil {
+		s.logger.WithError(err).
+			WithField("url", s.Config.URL).
 			Warn("couldn't load config from URL")
 	}
 
-	if err := S.loadEncrypted(); err != nil {
-		S.log.WithError(err).
+	if err := s.loadEncrypted(); err != nil {
+		s.logger.WithError(err).
 			Warn("error while processing encrypted config")
 	}
 
-	return S
+	return s, s.validate()
 }

@@ -5,6 +5,7 @@ import "time"
 // BeatMap is used in various cases where it's convenient to associate []Beat to a given node.
 type BeatMap map[int64]Beat
 
+// NewBeatMap returns an initialised-but-empty BeatMap
 func NewBeatMap() BeatMap {
 	return make(map[int64]Beat)
 }
@@ -15,12 +16,13 @@ func NewBeatMap() BeatMap {
 // failed tests that require alerting.
 func (bm BeatMap) AgeOut() {
 	for k, v := range bm {
-		if time.Now().Sub(v.Timestamp) > 21*time.Second {
+		if time.Since(v.Timestamp) > 21*time.Second {
 			delete(bm, k)
 		}
 	}
 }
 
+// ToBeats returns BeatMap's Beats, discarding node information
 func (bm BeatMap) ToBeats() (b Beats) {
 	for _, v := range bm {
 		b = append(b, v)
@@ -28,11 +30,15 @@ func (bm BeatMap) ToBeats() (b Beats) {
 	return
 }
 
+// Evaluate calls the Beats.Evaluate function on the Beatmap's Beats
+/*
 func (bm BeatMap) Evaluate() {
 	ba := bm.ToBeats()
 	ba.Evaluate()
 }
+*/
 
+// GetNodes returns the list of nodes from a BeatMap
 func (bm BeatMap) GetNodes() (n []int64) {
 	for k := range bm {
 		n = append(n, k)
