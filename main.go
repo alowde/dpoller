@@ -5,6 +5,7 @@ import (
 	"flag"
 	"github.com/Sirupsen/logrus"
 	_ "github.com/alowde/dpoller/alert/smtp"
+	"github.com/alowde/dpoller/config"
 	"github.com/alowde/dpoller/heartbeat"
 	_ "github.com/alowde/dpoller/listen/amqp"
 	"github.com/alowde/dpoller/logger"
@@ -36,7 +37,7 @@ func main() {
 	}
 
 	// Load configuration.
-	conf, err := NewSkeleton(flags.ConfLog.Level)
+	conf, err := config.NewSkeleton(flags.ConfLog.Level)
 	if err != nil {
 		log.WithError(err).
 			Fatal("Failed to load config")

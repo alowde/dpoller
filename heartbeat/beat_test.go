@@ -18,6 +18,8 @@ var node2 = node.Node{
 	net.IP{10, 0, 0, 2},
 	"test_node_2",
 }
+
+/*
 var node3 = node.Node{
 	3000000000000000000,
 	net.IP{10, 0, 0, 3},
@@ -28,7 +30,7 @@ var node4 = node.Node{
 	net.IP{10, 0, 0, 4},
 	"test_node_4",
 }
-
+*/
 // All tests use the same simulated time for each heartbeat as time is not currently a factor in tested functions
 var testtime, _ = time.Parse("20060102 150405", "20380119 031408") // bonus test
 
@@ -87,21 +89,5 @@ func TestEvaluate(t *testing.T) {
 		if isCoord != table.shouldBeCoord {
 			t.Errorf("Error in Evaluate() for case \"%s\", Coordinator was %t, should be %t", table.description, isCoord, table.shouldBeCoord)
 		}
-	}
-}
-
-func TestCoordCount(t *testing.T) {
-	b := Beats{Beat{node1, true, false, testtime}, Beat{node2, false, true, testtime}}
-
-	if b.CoordCount() != 1 {
-		t.Errorf("Error in CoordCount(), result was %v, should be 1", b.CoordCount())
-	}
-}
-
-func TestFeasCount(t *testing.T) {
-	b := Beats{Beat{node1, true, false, testtime}, Beat{node2, false, true, testtime}}
-
-	if b.FeasCount() != 1 {
-		t.Errorf("Error in CoordCount(), result was %v, should be 1", b.FeasCount())
 	}
 }

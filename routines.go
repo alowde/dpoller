@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/alowde/dpoller/alert"
+	"github.com/alowde/dpoller/config"
 	"github.com/alowde/dpoller/consensus"
 	"github.com/alowde/dpoller/coordinate"
 	"github.com/alowde/dpoller/heartbeat"
@@ -65,7 +66,7 @@ func newRoutines() routines {
 
 }
 
-func (r routines) start(conf *Skeleton) (err error) {
+func (r routines) start(conf *config.Skeleton) (err error) {
 
 	var hchan chan heartbeat.Beat
 	var schan chan check.Status
