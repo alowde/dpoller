@@ -102,11 +102,11 @@ func (b *broker) listen(result chan error, hchan chan heartbeat.Beat, schan chan
 
 func parseAmqpMessages(inbox <-chan amqp.Delivery, result chan error, hchan chan heartbeat.Beat, schan chan check.Status) {
 	for {
-		heartbeatTimer := time.After(15 * time.Second)
+		heartbeatTimer := time.NewTicker(15 * time.Second)
 	loop:
 		for {
 			select {
-			case <-heartbeatTimer:
+			case <-heartbeatTimer.C:
 				result <- heartbeat.RoutineNormal{Timestamp: time.Now()}
 				continue loop
 			case message := <-inbox:
