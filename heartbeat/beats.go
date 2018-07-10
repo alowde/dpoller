@@ -95,7 +95,8 @@ func (beats Beats) Evaluate(isCoord, isFeas bool, nodeID int64) (shouldBeCoordin
 	// puts responsibility back on the caller to provide sane data
 	// TODO: Extend the Evaluate() method to throw an error instead of panicking
 	if !beats.checkIdExists(nodeID) {
-		log.Fatal("Can't evaluate beats without self included")
+		log.WithField("beats", beats).
+			Fatal("Can't evaluate beats without self included")
 	}
 
 	bf, _ := beats.bestFeas()
