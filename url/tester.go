@@ -3,6 +3,7 @@ package url
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/alowde/dpoller/heartbeat"
 	"github.com/alowde/dpoller/logger"
@@ -49,6 +50,7 @@ func Initialise(config []byte, ll logrus.Level) (routineStatus chan error, err e
 
 func runTests(routineStatus chan error) {
 	var runList []checkRun
+
 	// Spread initial test runs over a minute to avoid a thundering herd.
 	for i := 0; i < 5; i++ {
 		minWait := time.After(12 * time.Second)
@@ -76,20 +78,24 @@ func runTests(routineStatus chan error) {
 		// For each test publish any returned results and re-launch the test if required
 		for k, tr := range runList {
 			select {
-			case result := <-tr.result:
+			case result, ok := <-tr.result:
 				// TODO: Implement async and batch publish methods and use one of those
-				log.WithField("url", tr.URL).Debug("Got a result")
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				if err := publish.Publish(ctx, result); err != nil {
-					// TODO: unwrap error and handle timeouts differently from other errors
-					log.WithField("error", err).Warn("failed to publish test result")
-				}
-				cancel()
-				log.WithField("url", tr.URL).Debug("Published a result")
-				if time.Since(tr.lastRan) > (60 * time.Second) {
-					runList[k].run()
+				log.WithField("url", tr.URL).
+					Debug("Got a result")
+				if ok {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					if err := publish.Publish(ctx, result); err != nil {
+						// TODO: unwrap error and handle timeouts differently from other errors
+						log.WithField("error", err).Warn("failed to publish test result")
+					}
+					cancel()
+					log.WithField("url", tr.URL).Debug("Published a result")
+					if time.Since(tr.lastRan) > (time.Duration(tr.TestInterval) * time.Second) {
+						runList[k].run()
+					}
 				}
 			default:
+				fmt.Println("skipping ", tr.URL)
 				// We trust that the Go http client will return a timeout if appropriate
 				// and never freeze or fail to return a result. If this proves optimistic
 				// we'll need to add a check here for timed out routines.
