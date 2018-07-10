@@ -47,6 +47,8 @@ timer:
 				// when interval expires, delete beats of nodes that haven't been seen for 21 seconds and evaluate
 				log.WithField("nodes", knownBeats.GetNodes()).Debug("Aging out nodes")
 				knownBeats.AgeOut()
+				// update the beatmap with our own heartbeat
+				knownBeats[node.Self.ID] = heartbeat.NewBeat()
 				log.WithField("nodes", knownBeats.GetNodes()).Debug("Evaluating nodes")
 				c, f := knownBeats.ToBeats().Evaluate(heartbeat.GetCoordinator(), heartbeat.GetFeasibleCoordinator(), node.Self.ID)
 				heartbeat.SetCoordinator(c)
